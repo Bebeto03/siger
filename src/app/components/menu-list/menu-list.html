@@ -1,0 +1,33 @@
+<p-breadcrumb [model]="itemsBreadCrumb"></p-breadcrumb>
+
+<div class="flex space-x-1">
+
+    @if(permissaoNovo){
+    <div class="pt-2">
+        <a pButton class="p-button-info" icon="pi pi-plus" pTooltip="Incluir" tooltipPosition="bottom"
+            (click)="novo()"></a>
+    </div>
+    }
+
+    @if(permissaoEditar){
+    <div class="pt-2">
+        <a pButton class="p-button-success" icon="pi pi-pencil" pTooltip="Alterar" tooltipPosition="bottom"
+            (click)="existeItemSelecionado('editar')"></a>
+    </div>
+    }
+
+    @if(permissaoConsultar){
+    <div class="pt-2">
+        <a pButton class="p-button-warn" icon="pi pi-eye" pTooltip="Consultar" tooltipPosition="bottom"
+            (click)="existeItemSelecionado('consultar')"></a>
+    </div>
+    }
+
+    @if(permissaoExcluir){
+    <div class="pt-2">
+        <a pButton class="p-button-danger" icon="pi pi-trash" pTooltip="Excluir" tooltipPosition="bottom"
+            (click)="existeItemSelecionado('excluir')"></a>
+    </div>
+    }
+
+</div>

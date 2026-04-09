@@ -1,0 +1,29 @@
+<p-breadcrumb [model]="itemsBreadCrumb"></p-breadcrumb>
+
+<div class="flex space-x-2 pt-3 pb-3">
+
+    @if(validarBotao('novoOuEditar', '', '')){
+    <button label="Salvar" pButton type="button" icon="pi pi-save" pTooltip="Salvar" tooltipPosition="bottom"
+        class="p-button-info w-30" (click)="salvarEntidade(formulario)">
+    </button>
+    }
+
+    @if(validarBotao('', 'excluir', '')){
+    <button label="Excluir" pButton type="button" icon="pi pi-trash" pTooltip="Excluir" tooltipPosition="bottom"
+        class="p-button-info w-30" (click)="excluirEntidade()">
+    </button>
+    }
+
+    @if(validarBotao('novoOuEditar', 'excluir', '')){
+    <button label="Cancelar" pButton type="button" icon="pi pi-times" pTooltip="Cancelar" tooltipPosition="bottom"
+        class="p-button-danger w-30" (click)="cancelar()">
+    </button>
+    }
+
+    @if(validarBotao('', '', 'consultar')){
+    <a label="Voltar" pButton icon="pi pi-undo" pTooltip="Voltar" tooltipPosition="bottom"
+        class="p-button-info w-30" [routerLink]="rotaListar">
+    </a>
+    }
+
+</div>
