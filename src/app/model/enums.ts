@@ -2,7 +2,8 @@ export class Enums{
 
     public static userType = [
         {label: 'Admin' ,value: 'ADMIN'},
-        {label: 'Organizador' ,value: 'ORGANIZADOR'}
+        {label: 'Organizador' ,value: 'ORGANIZADOR'},
+        {label: 'Participante' , value: 'PARTICIPANTE'}
     ];
 
     public static userStatus = [

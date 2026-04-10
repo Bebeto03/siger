@@ -4,7 +4,7 @@ import { Component } from '@angular/core';
     standalone: true,
     selector: 'app-footer',
     template: `<div class="layout-footer">
-        ©2025 - Secretaria da Infraestrutura - Governo do Ceará. Todos os direitos reservados.
+        ©2026 - Siger Aplication - Fortaleza(CE).
     </div>`
 })
 export class AppFooter {}

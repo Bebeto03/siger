@@ -5,8 +5,8 @@ import { CommonModule } from '@angular/common';
 import { StyleClassModule } from 'primeng/styleclass';
 import { AppConfigurator } from './app.configurator';
 import { LayoutService } from '../service/layout.service';
-import { SystemService } from '../../config/core/system.service';
-import { AuthorizationService } from '../../config/security/authorization.service';
+import { SystemService } from '../../configuration/core/system.service';
+import { AuthorizationService } from '../../configuration/security/authorization.service';
 import { version } from '../../../../package.json';
 import { environment } from '../../../environment/environment';
 

@@ -6,7 +6,7 @@ import { CheckboxModule } from 'primeng/checkbox';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { RippleModule } from 'primeng/ripple';
-import { AuthorizationService } from '../../config/security/authorization.service';
+import { AuthorizationService } from '../../configuration/security/authorization.service';
 
 @Component({
   selector: 'app-login',
