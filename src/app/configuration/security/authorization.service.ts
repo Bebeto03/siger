@@ -1,185 +1,104 @@
-import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { Injectable, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
+import { jwtDecode } from 'jwt-decode';
 import { environment } from '../../../environment/environment';
+import { firstValueFrom } from 'rxjs';
 
-import * as CryptoJS from 'crypto-js';
-import { JwtHelperService } from '@auth0/angular-jwt';
+export interface JwtPayload {
+  sub: string;
+  authorities: string[];
+  exp: number;
+  iat: number;
+}
 
-@Injectable({
-  providedIn: 'root'
-})
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+@Injectable({ providedIn: 'root' })
 export class AuthorizationService {
 
-  jwtPayload: any;
+  private readonly TOKEN_KEY = environment.tokenKey;
+  private _payload = signal<JwtPayload | null>(null);
 
-  constructor(
-    private http: HttpClient,
-    private jwtHelper: JwtHelperService
-  ) { 
+  readonly currentUser = this._payload.asReadonly();
+
+  constructor(private http: HttpClient, private router: Router) {
     this.carregarToken();
   }
 
-  login() {
-    const state = this.gerarStringAleatoria(40);
-    const codeVerifier = this.gerarStringAleatoria(128);
-    localStorage.setItem('state', state);
-    localStorage.setItem('codeVerifier', codeVerifier);
-
-    const codeChallengeMethod = 'S256'
-    const codeChallenge = CryptoJS.SHA256(codeVerifier)
-      .toString(CryptoJS.enc.Base64)
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "");
-
-    const params = [
-      'response_type=' + environment.responseType,
-      'client_id=' + environment.clientId,
-      'scope=' + environment.scope,
-      'code_challenge=' + codeChallenge,
-      'code_challenge_method=' + codeChallengeMethod,
-      'state=' + state,
-      'redirect_uri=' + encodeURIComponent(environment.redirectURI)
-    ]
-
-    window.location.href = environment.authorizationCallbackUrl + '?' +  params.join('&');
+  async login(credentials: LoginRequest): Promise<void> {
+    const response = await firstValueFrom(
+      this.http.post<{ token: string }>(`${environment.apiUrl}/auth/login`, credentials)
+    );
+    this.armazenarToken(response.token);
   }
 
-  obterNovoAccessTokenComCode(code: string, state: string): Promise<any> {
-    const stateSalvo = localStorage.getItem('state');
+  async forgotPassword(email: string): Promise<void> {
+    await firstValueFrom(
+      this.http.post(`${environment.apiUrl}/auth/forgot-password`, { email })
+    );
+  }
 
-    if (stateSalvo !== state) {
-      return Promise.reject(null);
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    await firstValueFrom(
+      this.http.post(`${environment.apiUrl}/auth/reset-password`, { token, newPassword })
+    );
+  }
+
+  logout(): void {
+    localStorage.removeItem(this.TOKEN_KEY);
+    this._payload.set(null);
+    this.router.navigate(['/login']);
+  }
+
+  isLoggedIn(): boolean {
+    const token = this.buscarToken();
+    if (!token) return false;
+    try {
+      const payload = jwtDecode<JwtPayload>(token);
+      return payload.exp * 1000 > Date.now();
+    } catch {
+      return false;
     }
-
-    const codeVerifier = localStorage.getItem('codeVerifier')!;
-
-    const payload = new HttpParams()
-      .append('grant_type', 'authorization_code')
-      .append('code', code)
-      .append('redirect_uri', environment.redirectURI)
-      .append('code_verifier', codeVerifier);
-
-    const headers = new HttpHeaders()
-      .append('Content-Type', 'application/x-www-form-urlencoded')
-      .append('Authorization', 'Basic '+ btoa(environment.clientId+':'+environment.secret));
-
-    return this.http.post<any>(environment.tokenUrl, payload, { headers })
-      .toPromise()
-      .then((response: any) => {        
-        this.armazenarToken(response['access_token']);
-        this.armazenarRefreshToken(response['refresh_token']);
-        localStorage.removeItem('state');
-        localStorage.removeItem('codeVerifier');
-        return Promise.resolve(null);
-      })
-      .catch((response: any) => {
-        return Promise.resolve();
-      });
-
   }
 
-  obterNovoAccessToken(): Promise<void> {
-    const headers = new HttpHeaders()
-      .append('Content-Type', 'application/x-www-form-urlencoded')
-      .append('Authorization', 'Basic '+ btoa(environment.clientId+':'+environment.secret));
-
-    const payload = new HttpParams()
-      .append('grant_type', 'refresh_token')
-      .append('refresh_token', localStorage.getItem('refreshToken')!)
-
-    return this.http.post<any>(environment.tokenUrl, payload,
-      { headers })
-      .toPromise()
-      .then((response: any) => {        
-        this.armazenarToken(response['access_token']);
-        this.armazenarRefreshToken(response['refresh_token'])
-        return Promise.resolve();
-      })
-      .catch((response: any) => {
-        return Promise.resolve();
-      });
+  temPermissao(role: string): boolean {
+    const payload = this._payload();
+    return !!payload?.authorities?.includes(role);
   }
 
-  public armazenarToken(token: string) {    
-    localStorage.setItem('token', token);
+  temQualquerPermissao(roles: string[]): boolean {
+    return roles.some(r => this.temPermissao(r));
   }
 
-  armazenarRefreshToken(refreshToken: string) {
-    localStorage.setItem('refreshToken', refreshToken);
+  buscarToken(): string | null {
+    return localStorage.getItem(this.TOKEN_KEY);
   }
 
-  public buscarToken() {
-    return localStorage.getItem('token');
+  getNomeUsuario(): string {
+    return this._payload()?.sub ?? '';
   }
 
-  public carregarToken() {
-    const token = localStorage.getItem('token');
+  private armazenarToken(token: string): void {
+    localStorage.setItem(this.TOKEN_KEY, token);
+    try {
+      this._payload.set(jwtDecode<JwtPayload>(token));
+    } catch {
+      this._payload.set(null);
+    }
+  }
 
+  private carregarToken(): void {
+    const token = this.buscarToken();
     if (token) {
-      this.armazenarToken(token);
-      this.decodificarToken(token);
-    }
-  }
-
-  isAccessTokenInvalido() {
-    const token = localStorage.getItem('token');
-    return !token || this.jwtHelper.isTokenExpired(token);
-  }
-
-  limparAccessToken() {
-    localStorage.removeItem('token');
-    this.jwtPayload = null;
-  }
-
-  decodificarToken(token: string){
-    this.jwtPayload = this.jwtHelper.decodeToken(token);
-  }
-
-  temPermissao(permissao: string) {
-    return this.jwtPayload && this.jwtPayload.authorities.includes(permissao);
-  }
-
-  temQualquerPermissao(roles: any) {
-    for (const role of roles) {
-      if (this.temPermissao(role)) {
-        return true;
+      try {
+        this._payload.set(jwtDecode<JwtPayload>(token));
+      } catch {
+        this.logout();
       }
     }
-    return false;
   }
-
-  public logout() {
-    localStorage.clear();
-    const headers = new HttpHeaders()
-      .append('Content-Type', 'application/x-www-form-urlencoded')
-      .append('Authorization', 'Basic '+ btoa(environment.clientId+':'+environment.secret));
-
-    const payload = new HttpParams()
-      .append('token', localStorage.getItem('refreshToken')!)
-
-    return this.http.post<any>(environment.tokenRevokeUrl, payload,
-      { headers })
-      .toPromise()
-      .then((response: any) => {
-        this.limparAccessToken();
-        localStorage.clear();
-        window.location.href = environment.logoutUrl + '?returnTo=' + environment.logoutRedirectUrl;
-        return Promise.resolve();
-      })
-      .catch((response: any) => {
-        return Promise.resolve();
-      });
-    
-  }
-
-  private gerarStringAleatoria(tamanho: number) {
-    let resultado = '';
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    for (let i = 0; i < tamanho; i++) {
-      resultado += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return resultado;
-  }
-  
 }

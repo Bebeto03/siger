@@ -1,18 +1,16 @@
-import { inject } from '@angular/core';
 import { HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
 import { AuthorizationService } from './authorization.service';
 
-export class NotAuthenticatedError {}
+export const tokenInterceptor: HttpInterceptorFn = (req, next) => {
+  const auth = inject(AuthorizationService);
+  const token = auth.buscarToken();
 
-export const tokenInterceptor: HttpInterceptorFn = (request, next) => {
-
-  let intReq = request;
-  let authorizationService = inject(AuthorizationService);
-
-  const token = authorizationService.buscarToken();
-  if(token != null ) {
-    intReq = request.clone({headers: request.headers.set('Authorization', 'Bearer ' + token)});
+  if (token && auth.isLoggedIn()) {
+    req = req.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
+  } else if (token && !auth.isLoggedIn()) {
+    localStorage.removeItem('siger_token');
   }
-  return next(intReq);
 
-}
+  return next(req);
+};
