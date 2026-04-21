@@ -1,20 +1,15 @@
-import { Participant } from "./participant";
-import { Meeting } from "./meeting";
+import { BaseResourceModel } from '../configuration/global/model/base-resource.model';
 
-export class User{
-
-    id !: number;
-    createdAt !: Date;
-    updateAt !: Date;
-    lastLogin !: Date;
-    name !: String;
-    email !: String;
-    password !: String;
-    cpf !: String;
-    phone !: String;
-    createdBy !: String;
-    updateBy !: String;
-    participant !: Participant;
-    meetings = new Array<Meeting>();
-
+export class User extends BaseResourceModel {
+  name!: string;
+  email!: string;
+  password?: string;
+  cpf!: string;
+  phone?: string;
+  type!: string;
+  status!: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  createdBy?: string;
+  updatedBy?: string;
 }
