@@ -5,8 +5,8 @@ import { DatePipe, registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
 
 import { routes } from './app.routes';
-import { tokenInterceptor } from './configuration/security/token.interceptor';
-import { errorInterceptor } from './configuration/security/error.interceptor';
+import { tokenInterceptor } from './core/interceptors/token.interceptor';
+import { errorInterceptor } from './core/interceptors/error.interceptor';
 
 registerLocaleData(localePt, 'pt-BR');
 
