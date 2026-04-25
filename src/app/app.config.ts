@@ -8,6 +8,7 @@ import { routes } from './app.routes';
 import { tokenInterceptor } from './core/interceptors/token.interceptor';
 import { errorInterceptor } from './core/interceptors/error.interceptor';
 import { mockInterceptor } from './core/interceptors/mock.interceptor';
+import { loadingInterceptor } from './core/interceptors/loading.interceptor';
 
 registerLocaleData(localePt, 'pt-BR');
 
@@ -15,7 +16,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([mockInterceptor, tokenInterceptor, errorInterceptor])),
+    provideHttpClient(withInterceptors([mockInterceptor, tokenInterceptor, loadingInterceptor, errorInterceptor])),
 
     DatePipe,
     { provide: LOCALE_ID, useValue: 'pt-BR' },

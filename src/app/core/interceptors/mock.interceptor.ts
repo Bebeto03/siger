@@ -23,11 +23,11 @@ function buildFakeJwt(email: string, roles: string[]): string {
 // ─── Fake Users ──────────────────────────────────────────────────────────────
 
 let mockUsers = [
-  { id: 1, name: 'Admin Sistema',    email: 'admin@siger.com',       cpf: '00000000001', phone: '(11) 99999-0001', type: 'ADMIN',        status: 'ATIVO'   },
-  { id: 2, name: 'João Organizador', email: 'joao@siger.com',        cpf: '00000000002', phone: '(11) 99999-0002', type: 'ORGANIZADOR',  status: 'ATIVO'   },
-  { id: 3, name: 'Maria Silva',      email: 'maria@siger.com',       cpf: '00000000003', phone: '(11) 99999-0003', type: 'PARTICIPANTE', status: 'ATIVO'   },
-  { id: 4, name: 'Carlos Souza',     email: 'carlos@siger.com',      cpf: '00000000004', phone: '(11) 99999-0004', type: 'PARTICIPANTE', status: 'INATIVO' },
-  { id: 5, name: 'Ana Pereira',      email: 'ana@siger.com',         cpf: '00000000005', phone: '(11) 99999-0005', type: 'ORGANIZADOR',  status: 'ATIVO'   },
+  { id: 1, name: 'Admin Sistema',    email: 'admin@siger.com',  cpf: '00000000001', phone: '(11) 99999-0001', type: 'ADMIN',        status: 'ATIVO',   meetings: 42 },
+  { id: 2, name: 'João Organizador', email: 'joao@siger.com',   cpf: '00000000002', phone: '(11) 99999-0002', type: 'ORGANIZADOR',  status: 'ATIVO',   meetings: 28 },
+  { id: 3, name: 'Maria Silva',      email: 'maria@siger.com',  cpf: '00000000003', phone: '(11) 99999-0003', type: 'PARTICIPANTE', status: 'ATIVO',   meetings: 15 },
+  { id: 4, name: 'Carlos Souza',     email: 'carlos@siger.com', cpf: '00000000004', phone: '(11) 99999-0004', type: 'PARTICIPANTE', status: 'INATIVO', meetings:  3 },
+  { id: 5, name: 'Ana Pereira',      email: 'ana@siger.com',    cpf: '00000000005', phone: '(11) 99999-0005', type: 'ORGANIZADOR',  status: 'ATIVO',   meetings: 19 },
 ];
 
 let nextId = 6;

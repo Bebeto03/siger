@@ -7,7 +7,7 @@ import { AuthService as AuthorizationService } from '../../core/services/auth.se
 import { NotificationService } from '../../core/services/notification.service';
 import { ToastComponent } from '../../shared/components/toast/toast';
 
-type Tab = 'perfil' | 'seguranca';
+type Tab = 'perfil' | 'seguranca' | 'notificacoes';
 
 @Component({
   selector: 'app-configuracoes',
@@ -39,6 +39,13 @@ type Tab = 'perfil' | 'seguranca';
             ? 'background: var(--color-primary); color: #000'
             : 'background: transparent; color: var(--color-text-secondary)'">
           🔒 Segurança
+        </button>
+        <button (click)="activeTab.set('notificacoes')"
+          class="px-5 py-2 rounded-lg text-sm font-medium transition-all"
+          [style]="activeTab() === 'notificacoes'
+            ? 'background: var(--color-primary); color: #000'
+            : 'background: transparent; color: var(--color-text-secondary)'">
+          🔔 Notificações
         </button>
       </div>
 
@@ -135,6 +142,49 @@ type Tab = 'perfil' | 'seguranca';
         </div>
       }
 
+      <!-- Tab: Notificações -->
+      @if (activeTab() === 'notificacoes') {
+        <div class="rounded-xl p-6"
+             style="background: var(--color-surface); border: 1px solid var(--color-border)">
+          <h3 class="font-semibold mb-1" style="color: var(--color-text-primary)">Preferências de Notificação</h3>
+          <p class="text-sm mb-5" style="color: var(--color-text-muted)">
+            Escolha quais notificações deseja receber.
+          </p>
+
+          <div class="flex flex-col gap-1">
+            @for (item of notifItems; track item.key) {
+              <div class="flex items-center justify-between py-3.5 border-b last:border-0"
+                   style="border-color: var(--color-border)">
+                <div>
+                  <div class="text-sm font-medium" style="color: var(--color-text-primary)">{{ item.label }}</div>
+                  <div class="text-xs mt-0.5" style="color: var(--color-text-muted)">{{ item.description }}</div>
+                </div>
+                <button
+                  (click)="toggleNotif(item.key)"
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ml-4"
+                  [style]="notifValues[item.key]
+                    ? 'background: var(--color-primary)'
+                    : 'background: var(--color-border)'">
+                  <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm"
+                        [style]="notifValues[item.key] ? 'transform: translateX(22px)' : 'transform: translateX(3px)'">
+                  </span>
+                </button>
+              </div>
+            }
+          </div>
+
+          <div class="mt-5 flex justify-end">
+            <button (click)="saveNotifications()" [disabled]="savingNotif()"
+              class="px-5 py-2.5 rounded-lg text-sm font-semibold transition-all"
+              [style]="savingNotif()
+                ? 'background: var(--color-primary-dark); color: #000; opacity: 0.5; cursor: not-allowed'
+                : 'background: var(--color-primary); color: #000'">
+              {{ savingNotif() ? 'Salvando...' : 'Salvar Preferências' }}
+            </button>
+          </div>
+        </div>
+      }
+
       <!-- Tab: Segurança -->
       @if (activeTab() === 'seguranca') {
         <div class="rounded-xl p-6"
@@ -191,6 +241,34 @@ export class Configuracoes implements OnInit {
   sendingReset = signal(false);
   resetSent = signal(false);
   currentUser = signal<User | null>(null);
+  savingNotif = signal(false);
+
+  readonly notifItems = [
+    { key: 'lembretes',    label: 'Lembretes de reunião',          description: '24h e 1h antes do início da reunião' },
+    { key: 'convites',     label: 'Convites de reunião',            description: 'Quando você for convidado para uma reunião' },
+    { key: 'cancelamento', label: 'Cancelamento de reunião',        description: 'Quando uma reunião for cancelada' },
+    { key: 'tarefas',      label: 'Atribuição de tarefas',          description: 'Quando uma tarefa for atribuída a você' },
+    { key: 'ausencia',     label: 'Alertas de ausência de confirmação', description: 'Participantes que ainda não confirmaram presença' },
+  ];
+
+  notifValues: Record<string, boolean> = {
+    lembretes:    true,
+    convites:     true,
+    cancelamento: true,
+    tarefas:      true,
+    ausencia:     false,
+  };
+
+  toggleNotif(key: string): void {
+    this.notifValues[key] = !this.notifValues[key];
+  }
+
+  async saveNotifications(): Promise<void> {
+    this.savingNotif.set(true);
+    await new Promise(r => setTimeout(r, 600));
+    this.savingNotif.set(false);
+    this.notify.success('Preferências de notificação salvas.');
+  }
 
   profileForm = this.fb.group({
     name:  ['', Validators.required],

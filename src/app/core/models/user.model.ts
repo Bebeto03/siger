@@ -8,6 +8,7 @@ export class User extends BaseResourceModel {
   phone?: string;
   type!: string;
   status!: string;
+  meetings?: number;
   createdAt?: Date;
   updatedAt?: Date;
   createdBy?: string;

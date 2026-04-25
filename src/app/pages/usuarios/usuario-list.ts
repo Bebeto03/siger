@@ -85,17 +85,19 @@ import { Enums } from '../../core/models/enums';
                     style="color: var(--color-text-muted)">Tipo</th>
                 <th class="text-left px-5 py-3 font-semibold text-xs uppercase tracking-wider"
                     style="color: var(--color-text-muted)">Status</th>
+                <th class="text-left px-5 py-3 font-semibold text-xs uppercase tracking-wider"
+                    style="color: var(--color-text-muted)">Reuniões</th>
                 <th class="text-right px-5 py-3 font-semibold text-xs uppercase tracking-wider"
                     style="color: var(--color-text-muted)">Ações</th>
               </tr>
             </thead>
             <tbody>
-              @for (user of filtered; track user.id) {
+              @for (user of filtered; track user.id; let i = $index) {
                 <tr class="table-row border-b" style="border-color: var(--color-border)">
                   <td class="px-5 py-3.5">
                     <div class="flex items-center gap-3">
                       <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
-                           style="background: linear-gradient(135deg, #6366F1, #8B5CF6)">
+                           [style.background]="avatarGradient(i)">
                         {{ initials(user.name) }}
                       </div>
                       <div>
@@ -119,6 +121,11 @@ import { Enums } from '../../core/models/enums';
                     </span>
                   </td>
                   <td class="px-5 py-3.5">
+                    <span class="text-sm font-semibold" style="color: var(--color-text-primary)">
+                      {{ user.meetings ?? '—' }}
+                    </span>
+                  </td>
+                  <td class="px-5 py-3.5">
                     <div class="flex items-center justify-end gap-2">
                       <button (click)="openEdit(user)" class="btn-edit px-3 py-1.5 rounded-lg text-xs font-medium"
                         style="background: var(--color-surface-light); color: var(--color-text-secondary); border: 1px solid var(--color-border); cursor: pointer; transition: border-color 0.15s">
@@ -133,7 +140,7 @@ import { Enums } from '../../core/models/enums';
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="4" class="text-center py-14">
+                  <td colspan="5" class="text-center py-14">
                     <div class="text-3xl mb-3">👥</div>
                     <div class="font-medium mb-1" style="color: var(--color-text-secondary)">
                       {{ searchText ? 'Nenhum usuário encontrado.' : 'Nenhum usuário cadastrado.' }}
@@ -297,5 +304,18 @@ export class UsuarioList implements OnInit {
     const parts = name.trim().split(' ').filter(Boolean);
     if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  private readonly gradients = [
+    'linear-gradient(135deg, #6366F1, #8B5CF6)',
+    'linear-gradient(135deg, #EC4899, #F43F5E)',
+    'linear-gradient(135deg, #F59E0B, #D97706)',
+    'linear-gradient(135deg, #10B981, #059669)',
+    'linear-gradient(135deg, #EF4444, #DC2626)',
+    'linear-gradient(135deg, #06B6D4, #0891B2)',
+  ];
+
+  avatarGradient(index: number): string {
+    return this.gradients[index % this.gradients.length];
   }
 }

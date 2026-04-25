@@ -16,7 +16,7 @@ interface NavItem {
   imports: [RouterModule],
   template: `
     <aside
-      class="flex flex-col min-h-screen shrink-0 transition-all duration-250"
+      class="flex flex-col shrink-0 transition-all duration-250 sticky top-0 h-screen overflow-y-auto"
       [style.width]="collapsed() ? '64px' : '240px'"
       style="background: var(--color-surface); border-right: 1px solid var(--color-border);"
     >
@@ -67,6 +67,7 @@ interface NavItem {
         @if (!collapsed()) {
           <div class="flex-1 min-w-0">
             <div class="text-sm font-semibold truncate" style="color: var(--color-text-primary);">{{ auth.getNomeUsuario() }}</div>
+            <div class="text-xs mt-0.5" style="color: var(--color-text-muted);">{{ roleLabel() }}</div>
           </div>
         }
       </div>
@@ -96,6 +97,13 @@ export class AppSidebar {
   initials(): string {
     const name = this.auth.getNomeUsuario();
     return name ? name.substring(0, 2).toUpperCase() : 'US';
+  }
+
+  roleLabel(): string {
+    const authorities = this.auth.currentUser()?.authorities ?? [];
+    if (authorities.some(a => a.includes('ADMIN')))        return 'Administrador';
+    if (authorities.some(a => a.includes('ORGANIZADOR')))  return 'Organizador';
+    return 'Participante';
   }
 
   onHover(event: MouseEvent, route: string, enter: boolean): void {

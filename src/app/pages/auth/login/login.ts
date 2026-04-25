@@ -37,11 +37,11 @@ export class Login {
     type:     ['PARTICIPANTE', Validators.required],
   });
 
-  readonly registerFields: { key: string; label: string; type: string; placeholder: string; error: string; maxLength?: number }[] = [
-    { key: 'name',     label: 'NOME COMPLETO', type: 'text',     placeholder: 'João da Silva',       error: 'Nome obrigatório.' },
-    { key: 'cpf',      label: 'CPF',           type: 'text',     placeholder: '00000000000',          error: 'CPF deve ter 11 dígitos.', maxLength: 11 },
-    { key: 'email',    label: 'E-MAIL',        type: 'email',    placeholder: 'seu@email.com',        error: 'E-mail inválido.' },
-    { key: 'password', label: 'SENHA',         type: 'password', placeholder: 'Mínimo 8 caracteres', error: 'Senha deve ter no mínimo 8 caracteres.' },
+  readonly registerFields: { key: string; label: string; type: string; placeholder: string; error: string; maxLength?: number; iconPath: string; iconExtra?: string }[] = [
+    { key: 'name',     label: 'NOME COMPLETO', type: 'text',     placeholder: 'João da Silva',       error: 'Nome obrigatório.',                    iconPath: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2', iconExtra: 'M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z' },
+    { key: 'cpf',      label: 'CPF',           type: 'text',     placeholder: '00000000000',          error: 'CPF deve ter 11 dígitos.',             iconPath: 'M1 4h22v16H1zM1 10h22', maxLength: 11 },
+    { key: 'email',    label: 'E-MAIL',        type: 'email',    placeholder: 'seu@email.com',        error: 'E-mail inválido.',                     iconPath: 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z', iconExtra: 'M22 6 12 13 2 6' },
+    { key: 'password', label: 'SENHA',         type: 'password', placeholder: 'Mínimo 8 caracteres', error: 'Senha deve ter no mínimo 8 caracteres.', iconPath: 'M7 11V7a5 5 0 0 1 10 0v4', iconExtra: 'M3 11h18v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' },
   ];
 
   async onLogin(): Promise<void> {

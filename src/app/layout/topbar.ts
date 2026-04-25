@@ -11,6 +11,9 @@ import { AuthService } from '../core/services/auth.service';
             style="background: var(--color-surface); border-bottom: 1px solid var(--color-border);">
       <div>
         <h1 class="text-xl font-bold tracking-tight" style="color: var(--color-text-primary);">{{ pageTitle() }}</h1>
+        @if (pageSubtitle()) {
+          <p class="text-xs mt-0.5" style="color: var(--color-text-muted);">{{ pageSubtitle() }}</p>
+        }
       </div>
       <div class="flex items-center gap-3">
         <span class="text-sm" style="color: var(--color-text-muted);">{{ auth.getNomeUsuario() }}</span>
@@ -30,6 +33,8 @@ export class AppTopbar {
 
   logout(): void { this.auth.logout(); }
 
+  private get url(): string { return this.router.url.split('?')[0]; }
+
   pageTitle(): string {
     const map: Record<string, string> = {
       '/dashboard':     'Dashboard',
@@ -37,10 +42,22 @@ export class AppTopbar {
       '/usuarios':      'Usuários',
       '/configuracoes': 'Configurações',
     };
-    const url = this.router.url.split('?')[0];
     for (const [key, val] of Object.entries(map)) {
-      if (url.startsWith(key)) return val;
+      if (this.url.startsWith(key)) return val;
     }
     return 'SIGER';
+  }
+
+  pageSubtitle(): string {
+    const map: Record<string, string> = {
+      '/dashboard':     'Visão geral do sistema',
+      '/reunioes':      'Gerencie suas reuniões',
+      '/usuarios':      'Gerencie os usuários do sistema',
+      '/configuracoes': 'Preferências da sua conta',
+    };
+    for (const [key, val] of Object.entries(map)) {
+      if (this.url.startsWith(key)) return val;
+    }
+    return '';
   }
 }
