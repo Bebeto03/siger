@@ -49,6 +49,17 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "mock": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environment/environment.ts",
+                  "with": "src/environment/environment.mock.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -64,6 +75,9 @@
             },
             "development": {
               "buildTarget": "siger:build:development"
+            },
+            "mock": {
+              "buildTarget": "siger:build:mock"
             }
           },
           "defaultConfiguration": "development"

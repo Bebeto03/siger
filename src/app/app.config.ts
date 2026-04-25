@@ -7,6 +7,7 @@ import localePt from '@angular/common/locales/pt';
 import { routes } from './app.routes';
 import { tokenInterceptor } from './core/interceptors/token.interceptor';
 import { errorInterceptor } from './core/interceptors/error.interceptor';
+import { mockInterceptor } from './core/interceptors/mock.interceptor';
 
 registerLocaleData(localePt, 'pt-BR');
 
@@ -14,7 +15,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([tokenInterceptor, errorInterceptor])),
+    provideHttpClient(withInterceptors([mockInterceptor, tokenInterceptor, errorInterceptor])),
 
     DatePipe,
     { provide: LOCALE_ID, useValue: 'pt-BR' },
