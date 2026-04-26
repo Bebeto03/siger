@@ -37,7 +37,7 @@ interface NavItem {
       <!-- Nav -->
       <nav class="flex-1 flex flex-col gap-0.5 p-2 py-3">
         @for (item of navItems; track item.id) {
-          @if (!item.adminOnly || auth.temPermissao('ADMIN')) {
+          @if (!item.adminOnly || auth.temPermissao('ROLE_ADMIN')) {
             <button
               (click)="navigate(item.route)"
               class="flex items-center gap-3 rounded-lg border-none cursor-pointer transition-all duration-150 text-sm"

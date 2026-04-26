@@ -1,10 +1,33 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { MeetingService, Meeting, MeetingParticipant, MeetingTopic } from '../../core/services/meeting.service';
+import { MeetingService } from '../../core/services/meeting.service';
+import { ParticipantService } from '../../core/services/participant.service';
+import { TopicService } from '../../core/services/topic.service';
+import { MeetingMinutesService } from '../../core/services/meeting-minutes.service';
 import { UserService } from '../../core/services/user.service';
+import { LogService } from '../../core/services/log.service';
+import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ToastComponent } from '../../shared/components/toast/toast';
+import { Meeting } from '../../core/models/meeting.model';
+import { Participant, ParticipantRole } from '../../core/models/participant.model';
+import { TopicPriority } from '../../core/models/topic.model';
+import { User } from '../../core/models/user.model';
+
+interface FormParticipant {
+  userId: number;
+  name: string;
+  email: string;
+  role: ParticipantRole;
+}
+
+interface FormTopic {
+  title: string;
+  priority: TopicPriority;
+  timer: number;
+  orderIndex: number;
+}
 
 @Component({
   selector: 'app-reuniao-form',
@@ -75,9 +98,8 @@ import { ToastComponent } from '../../shared/components/toast/toast';
           @if (step() === 1) {
             <h3 class="text-base font-bold mb-5" style="color: var(--color-text-primary)">Informações da Reunião</h3>
 
-            <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Título</label>
-            <input [(ngModel)]="form.title" placeholder="Ex: Sprint Planning S4"
-              class="w-full px-3 py-2.5 mb-4" />
+            <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Título *</label>
+            <input [(ngModel)]="form.title" placeholder="Ex: Sprint Planning S4" class="w-full px-3 py-2.5 mb-4" />
 
             <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Descrição</label>
             <textarea [(ngModel)]="form.description" rows="3" placeholder="Descreva o objetivo da reunião..."
@@ -85,22 +107,22 @@ import { ToastComponent } from '../../shared/components/toast/toast';
 
             <div class="flex gap-4">
               <div class="flex-1">
-                <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Data</label>
+                <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Data *</label>
                 <input type="date" [(ngModel)]="formDate" class="w-full px-3 py-2.5 mb-4" />
               </div>
               <div class="flex-1">
-                <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Horário</label>
+                <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Horário *</label>
                 <input type="time" [(ngModel)]="formTime" class="w-full px-3 py-2.5 mb-4" />
               </div>
             </div>
 
             <div class="flex gap-4">
               <div class="flex-1">
-                <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Duração (min)</label>
+                <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Duração (min) *</label>
                 <input type="number" [(ngModel)]="form.duration" placeholder="60" min="1" class="w-full px-3 py-2.5 mb-4" />
               </div>
               <div class="flex-1">
-                <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Local</label>
+                <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Local *</label>
                 <input [(ngModel)]="form.location" placeholder="Sala ou link da reunião" class="w-full px-3 py-2.5 mb-4" />
               </div>
             </div>
@@ -115,7 +137,6 @@ import { ToastComponent } from '../../shared/components/toast/toast';
               placeholder="Nome ou e-mail do participante..."
               class="w-full px-3 py-2.5 mb-3" />
 
-            <!-- Suggestions -->
             @if (userSuggestions().length > 0 && participantSearch) {
               <div class="rounded-lg mb-4 overflow-hidden" style="border: 1px solid var(--color-border)">
                 @for (u of userSuggestions(); track u.id) {
@@ -138,10 +159,9 @@ import { ToastComponent } from '../../shared/components/toast/toast';
               </div>
             }
 
-            <!-- Added participants -->
-            @if (form.participants.length > 0) {
+            @if (formParticipants.length > 0) {
               <div class="flex flex-wrap gap-2 mb-4">
-                @for (p of form.participants; track p.email) {
+                @for (p of formParticipants; track p.userId) {
                   <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
                         style="background: var(--color-surface-light); border: 1px solid var(--color-border); color: var(--color-text-primary)">
                     <span class="w-5 h-5 rounded-full flex items-center justify-center text-white font-bold"
@@ -170,7 +190,7 @@ import { ToastComponent } from '../../shared/components/toast/toast';
             <h3 class="text-base font-bold mb-5" style="color: var(--color-text-primary)">Pautas da Reunião</h3>
 
             <div class="flex flex-col gap-2 mb-4">
-              @for (t of form.topics; track $index; let i = $index) {
+              @for (t of formTopics; track $index; let i = $index) {
                 <div class="topic-row flex items-center gap-3 p-3 rounded-lg"
                      style="background: var(--color-surface-light); border: 1px solid var(--color-border)">
                   <div class="w-6 h-6 rounded flex items-center justify-center text-xs font-bold shrink-0"
@@ -179,7 +199,7 @@ import { ToastComponent } from '../../shared/components/toast/toast';
                   </div>
                   <div class="flex-1 min-w-0">
                     <input [(ngModel)]="t.title" placeholder="Título da pauta"
-                      class="w-full px-2 py-1 text-sm border-0 bg-transparent"
+                      class="w-full px-2 py-1 text-sm"
                       style="background: transparent; border: none; color: var(--color-text-primary)" />
                   </div>
                   <select [(ngModel)]="t.priority" class="px-2 py-1 text-xs rounded-lg"
@@ -226,7 +246,9 @@ import { ToastComponent } from '../../shared/components/toast/toast';
             <div class="mt-5 p-4 rounded-xl flex items-center gap-3"
                  style="background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25)">
               <span class="text-xl">✅</span>
-              <span class="text-sm font-semibold" style="color: var(--color-success)">Tudo certo! Clique em "{{ isEdit ? 'Salvar' : 'Criar Reunião' }}" para confirmar.</span>
+              <span class="text-sm font-semibold" style="color: var(--color-success)">
+                Tudo certo! Clique em "{{ isEdit ? 'Salvar' : 'Criar Reunião' }}" para confirmar.
+              </span>
             </div>
           }
 
@@ -259,56 +281,63 @@ import { ToastComponent } from '../../shared/components/toast/toast';
   `
 })
 export class ReuniaoForm implements OnInit {
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
-  private meetingService = inject(MeetingService);
-  private userService = inject(UserService);
-  private notify = inject(NotificationService);
+  private route               = inject(ActivatedRoute);
+  private router              = inject(Router);
+  private meetingService      = inject(MeetingService);
+  private participantService  = inject(ParticipantService);
+  private topicService        = inject(TopicService);
+  private minutesService      = inject(MeetingMinutesService);
+  private userService         = inject(UserService);
+  private logService          = inject(LogService);
+  private auth                = inject(AuthService);
+  private notify              = inject(NotificationService);
 
-  step = signal(1);
-  saving = signal(false);
-  isEdit = false;
+  step    = signal(1);
+  saving  = signal(false);
+  isEdit  = false;
   editId: number | null = null;
 
-  form: Meeting = {
+  form: Omit<Meeting, 'id' | 'createdAt' | 'updatedAt'> = {
     title: '', description: '', location: '',
     meetingDate: '', duration: 60,
-    participants: [], topics: [],
   };
 
   formDate = '';
   formTime = '';
 
-  allUsers: any[] = [];
-  participantSearch = '';
-  userSuggestions = signal<any[]>([]);
+  allUsers: User[]           = [];
+  participantSearch          = '';
+  userSuggestions            = signal<User[]>([]);
+  formParticipants: FormParticipant[] = [];
+  formTopics: FormTopic[]    = [];
 
   readonly steps = [
-    { i: 1, label: 'Informações' },
-    { i: 2, label: 'Participantes' },
-    { i: 3, label: 'Pauta' },
-    { i: 4, label: 'Revisão' },
+    { i: 1, label: 'Informações'  },
+    { i: 2, label: 'Participantes'},
+    { i: 3, label: 'Pauta'        },
+    { i: 4, label: 'Revisão'      },
   ];
 
   reviewRows = computed(() => {
-    const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
     let dateLabel = '—';
     if (this.formDate && this.formTime) {
       const d = new Date(`${this.formDate}T${this.formTime}`);
-      dateLabel = `${d.getDate().toString().padStart(2,'0')} ${monthNames[d.getMonth()]} ${d.getFullYear()} às ${this.formTime}`;
+      dateLabel = `${d.getDate().toString().padStart(2,'0')} ${months[d.getMonth()]} ${d.getFullYear()} às ${this.formTime}`;
     }
     return [
-      { key: 'Título',        value: this.form.title       || '—' },
-      { key: 'Data / Hora',   value: dateLabel },
-      { key: 'Duração',       value: this.form.duration ? `${this.form.duration} minutos` : '—' },
-      { key: 'Local',         value: this.form.location    || '—' },
-      { key: 'Participantes', value: `${this.form.participants.length} convidado(s)` },
-      { key: 'Pautas',        value: `${this.form.topics.length} item(s)` },
+      { key: 'Título',        value: this.form.title    || '—'                              },
+      { key: 'Data / Hora',   value: dateLabel                                              },
+      { key: 'Duração',       value: this.form.duration ? `${this.form.duration} min` : '—'},
+      { key: 'Local',         value: this.form.location || '—'                              },
+      { key: 'Participantes', value: `${this.formParticipants.length} convidado(s)`         },
+      { key: 'Pautas',        value: `${this.formTopics.length} item(s)`                   },
     ];
   });
 
   canAdvance = computed(() => {
-    if (this.step() === 1) return !!(this.form.title?.trim() && this.formDate && this.formTime && this.form.duration && this.form.location?.trim());
+    if (this.step() === 1)
+      return !!(this.form.title?.trim() && this.formDate && this.formTime && this.form.duration && this.form.location?.trim());
     return true;
   });
 
@@ -321,11 +350,29 @@ export class ReuniaoForm implements OnInit {
       this.editId = Number(id);
       try {
         const m = await this.meetingService.buscar(this.editId);
-        this.form = { ...m };
+        this.form = { title: m.title, description: m.description, location: m.location,
+                      meetingDate: m.meetingDate, duration: m.duration, status: m.status, organizer: m.organizer };
         if (m.meetingDate) {
           const d = new Date(m.meetingDate);
           this.formDate = d.toISOString().substring(0, 10);
           this.formTime = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+        }
+        const participants = await this.participantService.listarPorReuniao(this.editId);
+        this.formParticipants = participants.map(p => ({
+          userId: p.user.id,
+          name:   p.user.name  ?? '',
+          email:  p.user.email ?? '',
+          role:   p.role,
+        }));
+        const minutes = await this.minutesService.buscarPorReuniao(this.editId);
+        if (minutes?.id) {
+          const topics = await this.topicService.listarPorAta(minutes.id);
+          this.formTopics = topics.map(t => ({
+            title:      t.title,
+            priority:   t.priority,
+            timer:      t.timer ?? 15,
+            orderIndex: t.orderIndex,
+          }));
         }
       } catch {
         this.notify.error('Erro ao carregar reunião.');
@@ -337,35 +384,32 @@ export class ReuniaoForm implements OnInit {
   filterUsers(): void {
     const q = this.participantSearch.toLowerCase().trim();
     if (!q) { this.userSuggestions.set([]); return; }
-    const already = new Set(this.form.participants.map(p => p.email));
+    const already = new Set(this.formParticipants.map(p => p.userId));
     this.userSuggestions.set(
       this.allUsers.filter(u =>
-        !already.has(u.email) &&
+        !already.has(u.id) &&
         (u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
       ).slice(0, 5)
     );
   }
 
-  addParticipant(u: any): void {
-    this.form.participants.push({ name: u.name, email: u.email, role: 'PARTICIPANTE', status: null });
+  addParticipant(u: User): void {
+    this.formParticipants.push({ userId: u.id, name: u.name, email: u.email, role: 'PARTICIPANTE' });
     this.participantSearch = '';
     this.userSuggestions.set([]);
   }
 
-  removeParticipant(p: MeetingParticipant): void {
-    this.form.participants = this.form.participants.filter(x => x.email !== p.email);
+  removeParticipant(p: FormParticipant): void {
+    this.formParticipants = this.formParticipants.filter(x => x.userId !== p.userId);
   }
 
   addTopic(): void {
-    this.form.topics.push({
-      title: '', priority: 'MEDIA', timer: 15,
-      orderIndex: this.form.topics.length + 1, concluded: false,
-    });
+    this.formTopics.push({ title: '', priority: 'MEDIA', timer: 15, orderIndex: this.formTopics.length + 1 });
   }
 
   removeTopic(i: number): void {
-    this.form.topics.splice(i, 1);
-    this.form.topics.forEach((t, idx) => t.orderIndex = idx + 1);
+    this.formTopics.splice(i, 1);
+    this.formTopics.forEach((t, idx) => t.orderIndex = idx + 1);
   }
 
   next(): void { if (this.canAdvance()) this.step.update(s => s + 1); }
@@ -375,15 +419,19 @@ export class ReuniaoForm implements OnInit {
   async submit(): Promise<void> {
     this.saving.set(true);
     try {
-      const payload = {
-        ...this.form,
-        meetingDate: `${this.formDate}T${this.formTime}:00`,
-      };
+      const payload = { ...this.form, meetingDate: `${this.formDate}T${this.formTime}:00` };
+
       if (this.isEdit && this.editId) {
         await this.meetingService.editar(this.editId, payload);
+        await this.syncParticipants(this.editId);
+        await this.syncTopics(this.editId);
+        this.logService.registrar(`Reunião editada: ${this.form.title}`, this.auth.getNomeUsuario()).catch(() => {});
         this.notify.success('Reunião atualizada com sucesso!');
       } else {
-        await this.meetingService.criar(payload);
+        const meeting = await this.meetingService.criar(payload);
+        await this.syncParticipants(meeting.id!);
+        await this.syncTopics(meeting.id!);
+        this.logService.registrar(`Reunião criada: ${this.form.title}`, this.auth.getNomeUsuario()).catch(() => {});
         this.notify.success('Reunião criada com sucesso!');
       }
       this.router.navigate(['/reunioes']);
@@ -392,6 +440,37 @@ export class ReuniaoForm implements OnInit {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  private async syncParticipants(meetingId: number): Promise<void> {
+    const existing = await this.participantService.listarPorReuniao(meetingId);
+    await Promise.all(existing.map(p => this.participantService.excluir(p.id!)));
+    await Promise.all(
+      this.formParticipants.map(p =>
+        this.participantService.criar({ role: p.role, user: { id: p.userId }, meeting: { id: meetingId } })
+      )
+    );
+  }
+
+  private async syncTopics(meetingId: number): Promise<void> {
+    let minutes = await this.minutesService.buscarPorReuniao(meetingId);
+    if (!minutes) {
+      minutes = await this.minutesService.criar({ objectives: '', notes: '', decision: '', meeting: { id: meetingId } });
+    }
+    const existing = await this.topicService.listarPorAta(minutes.id!);
+    await Promise.all(existing.map(t => this.topicService.excluir(t.id!)));
+    await Promise.all(
+      this.formTopics
+        .filter(t => t.title.trim())
+        .map(t => this.topicService.criar({
+          title:         t.title,
+          priority:      t.priority,
+          timer:         t.timer,
+          orderIndex:    t.orderIndex,
+          concluded:     false,
+          meetingMinutes: { id: minutes!.id! },
+        }))
+    );
   }
 
   initials(name: string): string {

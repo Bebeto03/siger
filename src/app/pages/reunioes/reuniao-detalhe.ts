@@ -1,9 +1,20 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { MeetingService, Meeting, MeetingTopic } from '../../core/services/meeting.service';
+import { MeetingService } from '../../core/services/meeting.service';
+import { ParticipantService } from '../../core/services/participant.service';
+import { TopicService } from '../../core/services/topic.service';
+import { MeetingMinutesService } from '../../core/services/meeting-minutes.service';
+import { LogService } from '../../core/services/log.service';
+import { AuthService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { ToastComponent } from '../../shared/components/toast/toast';
+import { Meeting, MeetingStatus } from '../../core/models/meeting.model';
+import { Participant, ParticipantParticipation } from '../../core/models/participant.model';
+import { Topic, TopicPriority } from '../../core/models/topic.model';
+import { MeetingMinutes } from '../../core/models/meeting-minutes.model';
+
+type ActiveTab = 'info' | 'participants' | 'topics' | 'minutes' | 'tasks';
 
 @Component({
   selector: 'app-reuniao-detalhe',
@@ -16,6 +27,8 @@ import { ToastComponent } from '../../shared/components/toast/toast';
     .topic-row { transition: border-color 0.15s; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .spinner { animation: spin 0.8s linear infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .timer-pulse { animation: pulse 1s ease-in-out infinite; }
   `],
   template: `
     <div class="flex flex-col min-h-full">
@@ -39,7 +52,7 @@ import { ToastComponent } from '../../shared/components/toast/toast';
               style="background: var(--color-surface-light); color: var(--color-text-primary); border: 1px solid var(--color-border); cursor: pointer">
               ✏️ Editar
             </button>
-            <button (click)="confirmCancel()" class="px-4 py-2 rounded-lg text-sm font-semibold"
+            <button (click)="showDeleteModal.set(true)" class="px-4 py-2 rounded-lg text-sm font-semibold"
               style="background: rgba(239,68,68,0.1); color: var(--color-danger); border: 1px solid rgba(239,68,68,0.2); cursor: pointer">
               🗑 Excluir
             </button>
@@ -78,7 +91,7 @@ import { ToastComponent } from '../../shared/components/toast/toast';
               <div>
                 <div class="text-xs" style="color: var(--color-text-muted)">Participantes</div>
                 <div class="text-sm font-semibold" style="color: var(--color-text-primary)">
-                  {{ confirmedCount() }}/{{ meeting()!.participants.length }} confirmados
+                  {{ confirmedCount() }}/{{ participants().length }} confirmados
                 </div>
               </div>
             </div>
@@ -87,7 +100,7 @@ import { ToastComponent } from '../../shared/components/toast/toast';
               <div>
                 <div class="text-xs" style="color: var(--color-text-muted)">Pautas</div>
                 <div class="text-sm font-semibold" style="color: var(--color-text-primary)">
-                  {{ concludedCount() }}/{{ meeting()!.topics.length }} concluídas
+                  {{ concludedCount() }}/{{ topics().length }} concluídas
                 </div>
               </div>
             </div>
@@ -118,17 +131,17 @@ import { ToastComponent } from '../../shared/components/toast/toast';
                 </span>
               </div>
               <p class="text-sm leading-relaxed" style="color: var(--color-text-secondary)">
-                {{ meeting()!.description }}
+                {{ meeting()!.description || 'Sem descrição.' }}
               </p>
-              @if (meeting()!.user) {
+              @if (meeting()!.organizer?.name) {
                 <div class="mt-5 pt-4 border-t flex items-center gap-3" style="border-color: var(--color-border)">
                   <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white"
                        style="background: linear-gradient(135deg, #6366F1, #8B5CF6)">
-                    {{ initials(meeting()!.user!.name) }}
+                    {{ initials(meeting()!.organizer!.name!) }}
                   </div>
                   <div>
                     <div class="text-xs" style="color: var(--color-text-muted)">Organizado por</div>
-                    <div class="text-sm font-semibold" style="color: var(--color-text-primary)">{{ meeting()!.user!.name }}</div>
+                    <div class="text-sm font-semibold" style="color: var(--color-text-primary)">{{ meeting()!.organizer!.name }}</div>
                   </div>
                 </div>
               }
@@ -140,33 +153,42 @@ import { ToastComponent } from '../../shared/components/toast/toast';
             <div class="rounded-xl p-5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
               <div class="flex items-center justify-between mb-4">
                 <h3 class="text-base font-bold" style="color: var(--color-text-primary)">
-                  Participantes ({{ meeting()!.participants.length }})
+                  Participantes ({{ participants().length }})
                 </h3>
               </div>
-              <div class="flex flex-col gap-2">
-                @for (p of meeting()!.participants; track p.email; let i = $index) {
-                  <div class="participant-row flex items-center gap-3 px-4 py-3 rounded-lg"
-                       style="background: var(--color-surface-light)">
-                    <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
-                         [style.background]="avatarGradient(i)">
-                      {{ initials(p.name) }}
+              @if (loadingParticipants()) {
+                <div class="flex items-center gap-2 py-6" style="color: var(--color-text-muted)">
+                  <div class="spinner w-4 h-4 rounded-full border-2" style="border-color: var(--color-primary); border-top-color: transparent"></div>
+                  <span class="text-sm">Carregando participantes...</span>
+                </div>
+              } @else {
+                <div class="flex flex-col gap-2">
+                  @for (p of participants(); track p.id; let i = $index) {
+                    <div class="participant-row flex items-center gap-3 px-4 py-3 rounded-lg"
+                         style="background: var(--color-surface-light)">
+                      <div class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                           [style.background]="avatarGradient(i)">
+                        {{ initials(p.user.name ?? '') }}
+                      </div>
+                      <div class="flex-1">
+                        <div class="text-sm font-semibold" style="color: var(--color-text-primary)">
+                          {{ p.user.name || p.user.email || 'Usuário #' + p.user.id }}
+                        </div>
+                        <div class="text-xs" style="color: var(--color-text-muted)">{{ roleLabel(p.role) }}</div>
+                      </div>
+                      <span class="px-2.5 py-1 rounded-full text-xs font-semibold"
+                            [style.background]="participationBg(p.participation)"
+                            [style.color]="participationColor(p.participation)">
+                        {{ participationLabel(p.participation) }}
+                      </span>
                     </div>
-                    <div class="flex-1">
-                      <div class="text-sm font-semibold" style="color: var(--color-text-primary)">{{ p.name }}</div>
-                      <div class="text-xs" style="color: var(--color-text-muted)">{{ roleLabel(p.role) }}</div>
+                  } @empty {
+                    <div class="text-center py-10">
+                      <p class="text-sm" style="color: var(--color-text-muted)">Nenhum participante cadastrado.</p>
                     </div>
-                    <span class="px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1"
-                          [style.background]="participationBg(p.status)"
-                          [style.color]="participationColor(p.status)">
-                      {{ participationLabel(p.status) }}
-                    </span>
-                  </div>
-                } @empty {
-                  <div class="text-center py-10">
-                    <p class="text-sm" style="color: var(--color-text-muted)">Nenhum participante cadastrado.</p>
-                  </div>
-                }
-              </div>
+                  }
+                </div>
+              }
             </div>
           }
 
@@ -176,49 +198,75 @@ import { ToastComponent } from '../../shared/components/toast/toast';
               <div class="flex items-center justify-between mb-4">
                 <h3 class="text-base font-bold" style="color: var(--color-text-primary)">Pautas</h3>
               </div>
-              <div class="flex flex-col gap-2">
-                @for (t of meeting()!.topics; track t.id; let i = $index) {
-                  <div class="topic-row flex items-center gap-3 p-4 rounded-xl"
-                       style="background: var(--color-surface-light)"
-                       [style.border]="t.concluded ? '1px solid rgba(16,185,129,0.3)' : '1px solid var(--color-border)'">
-                    <button (click)="toggleTopic(t)"
-                      class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 cursor-pointer"
-                      [style.background]="t.concluded ? 'var(--color-success)' : 'var(--color-surface-hover)'"
-                      style="border: none">
-                      @if (t.concluded) {
-                        <span class="text-xs text-white font-bold">✓</span>
+              @if (loadingTopics()) {
+                <div class="flex items-center gap-2 py-6" style="color: var(--color-text-muted)">
+                  <div class="spinner w-4 h-4 rounded-full border-2" style="border-color: var(--color-primary); border-top-color: transparent"></div>
+                  <span class="text-sm">Carregando pautas...</span>
+                </div>
+              } @else {
+                <div class="flex flex-col gap-2">
+                  @for (t of topics(); track t.id; let i = $index) {
+                    <div class="topic-row flex items-center gap-3 p-4 rounded-xl"
+                         style="background: var(--color-surface-light)"
+                         [style.border]="t.concluded ? '1px solid rgba(16,185,129,0.3)' : '1px solid var(--color-border)'">
+                      <button (click)="toggleTopic(t)"
+                        class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 cursor-pointer"
+                        [style.background]="t.concluded ? 'var(--color-success)' : 'var(--color-surface-hover)'"
+                        style="border: none">
+                        @if (t.concluded) {
+                          <span class="text-xs text-white font-bold">✓</span>
+                        } @else {
+                          <span class="text-xs font-bold" style="color: var(--color-text-muted)">{{ i + 1 }}</span>
+                        }
+                      </button>
+                      <div class="flex-1">
+                        <div class="text-sm font-semibold"
+                             [style.color]="t.concluded ? 'var(--color-text-muted)' : 'var(--color-text-primary)'"
+                             [style.textDecoration]="t.concluded ? 'line-through' : 'none'">
+                          {{ t.title }}
+                        </div>
+                        <div class="flex items-center gap-3 mt-1">
+                          <span class="px-2 py-0.5 rounded-full text-xs font-semibold"
+                                [style.background]="priorityBg(t.priority)"
+                                [style.color]="priorityColor(t.priority)">
+                            {{ t.priority }}
+                          </span>
+                          @if (t.timer) {
+                            <span class="text-xs flex items-center gap-1" style="color: var(--color-text-muted)">
+                              ⏱ {{ t.timer }} min
+                            </span>
+                          }
+                        </div>
+                      </div>
+
+                      <!-- Timer button -->
+                      @if (activeTimer()?.topicId === t.id) {
+                        <div class="flex items-center gap-2">
+                          <span class="text-sm font-mono font-bold timer-pulse" style="color: var(--color-primary)">
+                            {{ formatTimer(activeTimer()!.remaining) }}
+                          </span>
+                          <button (click)="stopTimer()"
+                            class="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                            style="background: rgba(239,68,68,0.1); color: var(--color-danger); border: 1px solid rgba(239,68,68,0.2); cursor: pointer">
+                            ⏹ Parar
+                          </button>
+                        </div>
                       } @else {
-                        <span class="text-xs font-bold" style="color: var(--color-text-muted)">{{ i + 1 }}</span>
+                        <button (click)="startTimer(t)"
+                          class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                          [style.opacity]="t.concluded ? '0.4' : '1'"
+                          style="background: var(--color-surface-hover); color: var(--color-text-secondary); border: 1px solid var(--color-border); cursor: pointer">
+                          ⏱ Timer
+                        </button>
                       }
-                    </button>
-                    <div class="flex-1">
-                      <div class="text-sm font-semibold"
-                           [style.color]="t.concluded ? 'var(--color-text-muted)' : 'var(--color-text-primary)'"
-                           [style.textDecoration]="t.concluded ? 'line-through' : 'none'">
-                        {{ t.title }}
-                      </div>
-                      <div class="flex items-center gap-3 mt-1">
-                        <span class="px-2 py-0.5 rounded-full text-xs font-semibold"
-                              [style.background]="priorityBg(t.priority)"
-                              [style.color]="priorityColor(t.priority)">
-                          {{ t.priority }}
-                        </span>
-                        <span class="text-xs flex items-center gap-1" style="color: var(--color-text-muted)">
-                          ⏱ {{ t.timer }} min
-                        </span>
-                      </div>
                     </div>
-                    <button class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold"
-                      style="background: var(--color-surface-hover); color: var(--color-text-secondary); border: 1px solid var(--color-border); cursor: pointer">
-                      ⏱ Timer
-                    </button>
-                  </div>
-                } @empty {
-                  <div class="text-center py-10">
-                    <p class="text-sm" style="color: var(--color-text-muted)">Nenhuma pauta cadastrada.</p>
-                  </div>
-                }
-              </div>
+                  } @empty {
+                    <div class="text-center py-10">
+                      <p class="text-sm" style="color: var(--color-text-muted)">Nenhuma pauta cadastrada.</p>
+                    </div>
+                  }
+                </div>
+              }
             </div>
           }
 
@@ -229,26 +277,50 @@ import { ToastComponent } from '../../shared/components/toast/toast';
                 <div class="flex items-center justify-between mb-4">
                   <h3 class="text-base font-bold" style="color: var(--color-text-primary)">Ata da Reunião</h3>
                   <div class="flex gap-2">
-                    <button class="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                    <button (click)="onComingSoon('Resumo IA')" class="px-3 py-1.5 rounded-lg text-xs font-semibold"
                       style="background: var(--color-surface-light); color: var(--color-text-secondary); border: 1px solid var(--color-border); cursor: pointer">
                       ⚡ Resumo IA
                     </button>
-                    <button class="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                    <button (click)="onComingSoon('Exportar PDF')" class="px-3 py-1.5 rounded-lg text-xs font-semibold"
                       style="background: var(--color-surface-light); color: var(--color-text-secondary); border: 1px solid var(--color-border); cursor: pointer">
                       📥 Exportar PDF
                     </button>
                   </div>
                 </div>
-                <div class="rounded-xl p-4" style="background: var(--color-surface-light); border: 1px solid var(--color-border); min-height: 200px">
-                  <textarea [(ngModel)]="minutesText" rows="10"
-                    placeholder="Clique aqui para editar a ata da reunião..."
-                    class="w-full h-full text-sm leading-relaxed resize-none"
-                    style="background: transparent; border: none; color: var(--color-text-secondary); outline: none; width: 100%"></textarea>
-                </div>
-                <button (click)="saveMinutes()" class="mt-3 px-4 py-2 rounded-lg text-sm font-semibold"
-                  style="background: var(--color-primary); color: #000; border: none; cursor: pointer">
-                  💾 Salvar Ata
-                </button>
+
+                @if (loadingMinutes()) {
+                  <div class="flex items-center gap-2 py-6" style="color: var(--color-text-muted)">
+                    <div class="spinner w-4 h-4 rounded-full border-2" style="border-color: var(--color-primary); border-top-color: transparent"></div>
+                    <span class="text-sm">Carregando ata...</span>
+                  </div>
+                } @else {
+                  <div class="flex flex-col gap-4 mb-4">
+                    <div>
+                      <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Objetivos</label>
+                      <input [(ngModel)]="minutesForm.objectives" placeholder="Objetivos da reunião..."
+                        class="w-full px-3 py-2 rounded-lg text-sm"
+                        style="background: var(--color-surface-light); border: 1px solid var(--color-border); color: var(--color-text-primary); outline: none" />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Notas</label>
+                      <textarea [(ngModel)]="minutesForm.notes" rows="4" placeholder="Notas e observações da reunião..."
+                        class="w-full px-3 py-2 rounded-lg text-sm resize-y"
+                        style="background: var(--color-surface-light); border: 1px solid var(--color-border); color: var(--color-text-primary); outline: none"></textarea>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Decisões</label>
+                      <textarea [(ngModel)]="minutesForm.decision" rows="3" placeholder="Decisões tomadas na reunião..."
+                        class="w-full px-3 py-2 rounded-lg text-sm resize-y"
+                        style="background: var(--color-surface-light); border: 1px solid var(--color-border); color: var(--color-text-primary); outline: none"></textarea>
+                    </div>
+                  </div>
+                  <button (click)="saveMinutes()" [disabled]="savingMinutes()"
+                    class="px-4 py-2 rounded-lg text-sm font-semibold"
+                    [style.opacity]="savingMinutes() ? '0.7' : '1'"
+                    style="background: var(--color-primary); color: #000; border: none; cursor: pointer">
+                    {{ savingMinutes() ? 'Salvando...' : '💾 Salvar Ata' }}
+                  </button>
+                }
               </div>
 
               <div class="rounded-xl p-5" style="min-width: 220px; background: var(--color-surface); border: 1px solid var(--color-border)">
@@ -274,20 +346,20 @@ import { ToastComponent } from '../../shared/components/toast/toast';
             </div>
           }
 
-          <!-- Tab: Tarefas -->
+          <!-- Tab: Tarefas — Fase 3 -->
           @if (activeTab() === 'tasks') {
             <div class="rounded-xl p-5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
               <div class="flex items-center justify-between mb-4">
                 <h3 class="text-base font-bold" style="color: var(--color-text-primary)">Tarefas da Reunião</h3>
-                <button class="px-3 py-1.5 rounded-lg text-xs font-semibold"
-                  style="background: var(--color-primary); color: #000; border: none; cursor: pointer">
-                  + Nova Tarefa
-                </button>
+                <span class="px-2.5 py-1 rounded-full text-xs font-semibold"
+                  style="background: rgba(245,158,11,0.15); color: var(--color-warning)">
+                  Fase 3
+                </span>
               </div>
               <div class="text-center py-12">
                 <div class="text-4xl mb-3">✅</div>
                 <p class="font-medium mb-1" style="color: var(--color-text-secondary)">Nenhuma tarefa criada.</p>
-                <p class="text-sm" style="color: var(--color-text-muted)">Tarefas serão implementadas na Fase 3.</p>
+                <p class="text-sm" style="color: var(--color-text-muted)">Gerenciamento de tarefas será implementado na Fase 3.</p>
               </div>
             </div>
           }
@@ -321,25 +393,43 @@ import { ToastComponent } from '../../shared/components/toast/toast';
     }
   `
 })
-export class ReuniaoDetalhe implements OnInit {
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
-  private meetingService = inject(MeetingService);
-  private notify = inject(NotificationService);
+export class ReuniaoDetalhe implements OnInit, OnDestroy {
+  private route              = inject(ActivatedRoute);
+  private router             = inject(Router);
+  private meetingService     = inject(MeetingService);
+  private participantService = inject(ParticipantService);
+  private topicService       = inject(TopicService);
+  private minutesService     = inject(MeetingMinutesService);
+  private logService         = inject(LogService);
+  private auth               = inject(AuthService);
+  private notify             = inject(NotificationService);
 
-  meeting = signal<Meeting | null>(null);
-  loading = signal(false);
-  activeTab = signal<'info' | 'participants' | 'topics' | 'minutes' | 'tasks'>('info');
-  showDeleteModal = signal(false);
-  minutesText = '';
+  meeting             = signal<Meeting | null>(null);
+  participants        = signal<Participant[]>([]);
+  topics              = signal<Topic[]>([]);
+  minutes             = signal<MeetingMinutes | null>(null);
+
+  loading             = signal(false);
+  loadingParticipants = signal(false);
+  loadingTopics       = signal(false);
+  loadingMinutes      = signal(false);
+  savingMinutes       = signal(false);
+  showDeleteModal     = signal(false);
+
+  activeTab = signal<ActiveTab>('info');
+
+  minutesForm = { objectives: '', notes: '', decision: '' };
   minutesHistory = signal<{ author: string; date: string }[]>([]);
 
+  activeTimer = signal<{ topicId: number; remaining: number } | null>(null);
+  private timerInterval: ReturnType<typeof setInterval> | null = null;
+
   readonly tabs = [
-    { id: 'info' as const,         label: 'Detalhes'      },
-    { id: 'participants' as const, label: 'Participantes'  },
-    { id: 'topics' as const,       label: 'Pautas'         },
-    { id: 'minutes' as const,      label: 'Ata'            },
-    { id: 'tasks' as const,        label: 'Tarefas'        },
+    { id: 'info'         as ActiveTab, label: 'Detalhes'     },
+    { id: 'participants' as ActiveTab, label: 'Participantes' },
+    { id: 'topics'       as ActiveTab, label: 'Pautas'        },
+    { id: 'minutes'      as ActiveTab, label: 'Ata'           },
+    { id: 'tasks'        as ActiveTab, label: 'Tarefas'       },
   ];
 
   async ngOnInit(): Promise<void> {
@@ -351,20 +441,63 @@ export class ReuniaoDetalhe implements OnInit {
     } catch {
       this.notify.error('Reunião não encontrada.');
       this.router.navigate(['/reunioes']);
+      return;
     } finally {
       this.loading.set(false);
     }
+    this.loadParticipants(id);
+    this.loadMinutesAndTopics(id);
+  }
+
+  ngOnDestroy(): void { this.stopTimer(); }
+
+  private async loadParticipants(meetingId: number): Promise<void> {
+    this.loadingParticipants.set(true);
+    try {
+      this.participants.set(await this.participantService.listarPorReuniao(meetingId));
+    } catch {
+      this.notify.error('Erro ao carregar participantes.');
+    } finally {
+      this.loadingParticipants.set(false);
+    }
+  }
+
+  private async loadMinutesAndTopics(meetingId: number): Promise<void> {
+    this.loadingMinutes.set(true);
+    this.loadingTopics.set(true);
+    try {
+      const min = await this.minutesService.buscarPorReuniao(meetingId);
+      this.minutes.set(min);
+      if (min) {
+        this.minutesForm = { objectives: min.objectives, notes: min.notes, decision: min.decision };
+        const t = await this.topicService.listarPorAta(min.id!);
+        this.topics.set(t.sort((a, b) => a.orderIndex - b.orderIndex));
+      }
+    } catch {
+      this.notify.error('Erro ao carregar ata e pautas.');
+    } finally {
+      this.loadingMinutes.set(false);
+      this.loadingTopics.set(false);
+    }
+  }
+
+  confirmedCount(): number {
+    return this.participants().filter(p => p.participation === 'SIM' || p.participation === 'PARTICIPOU').length;
+  }
+
+  concludedCount(): number {
+    return this.topics().filter(t => t.concluded).length;
   }
 
   goBack(): void { this.router.navigate(['/reunioes']); }
   goEdit(): void { this.router.navigate(['/reunioes', this.meeting()?.id, 'editar']); }
-  confirmCancel(): void { this.showDeleteModal.set(true); }
 
   async executeDelete(): Promise<void> {
     const id = this.meeting()?.id;
     if (!id) return;
     try {
       await this.meetingService.excluir(id);
+      this.logService.registrar(`Reunião excluída: ${this.meeting()?.title}`, this.auth.getNomeUsuario()).catch(() => {});
       this.notify.success('Reunião excluída.');
       this.router.navigate(['/reunioes']);
     } catch {
@@ -373,24 +506,77 @@ export class ReuniaoDetalhe implements OnInit {
     }
   }
 
-  toggleTopic(t: MeetingTopic): void {
-    t.concluded = !t.concluded;
+  async toggleTopic(t: Topic): Promise<void> {
+    const updated = { ...t, concluded: !t.concluded };
+    try {
+      await this.topicService.editar(t.id!, { concluded: updated.concluded });
+      this.topics.update(list => list.map(x => x.id === t.id ? updated : x));
+    } catch {
+      this.notify.error('Erro ao atualizar pauta.');
+    }
   }
 
-  saveMinutes(): void {
-    const now = new Date();
-    const label = `${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-    this.minutesHistory.update(h => [{ author: 'Você', date: label }, ...h]);
-    this.notify.success('Ata salva com sucesso!');
+  async saveMinutes(): Promise<void> {
+    const meetingId = this.meeting()?.id;
+    if (!meetingId) return;
+    this.savingMinutes.set(true);
+    try {
+      const payload = { ...this.minutesForm, meeting: { id: meetingId } };
+      if (this.minutes()?.id) {
+        await this.minutesService.editar(this.minutes()!.id!, payload);
+      } else {
+        const created = await this.minutesService.criar(payload);
+        this.minutes.set(created);
+      }
+      const now   = new Date();
+      const label = `${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+      this.minutesHistory.update(h => [{ author: this.auth.getNomeUsuario() || 'Você', date: label }, ...h]);
+      this.notify.success('Ata salva com sucesso!');
+    } catch {
+      this.notify.error('Erro ao salvar ata.');
+    } finally {
+      this.savingMinutes.set(false);
+    }
   }
 
-  confirmedCount(): number {
-    return this.meeting()?.participants.filter(p => p.status === 'SIM').length ?? 0;
+  onComingSoon(feature: string): void {
+    this.notify.info(`${feature} estará disponível em breve.`);
   }
 
-  concludedCount(): number {
-    return this.meeting()?.topics.filter(t => t.concluded).length ?? 0;
+  // ── Timer ───────────────────────────────────────────────────────────────────
+
+  startTimer(t: Topic): void {
+    if (t.concluded) return;
+    this.stopTimer();
+    const minutes = t.timer ?? 5;
+    this.activeTimer.set({ topicId: t.id!, remaining: minutes * 60 });
+    this.timerInterval = setInterval(() => {
+      const current = this.activeTimer();
+      if (!current) return;
+      if (current.remaining <= 0) {
+        this.notify.info(`Tempo da pauta "${t.title}" encerrado!`);
+        this.stopTimer();
+        return;
+      }
+      this.activeTimer.set({ ...current, remaining: current.remaining - 1 });
+    }, 1000);
   }
+
+  stopTimer(): void {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+    this.activeTimer.set(null);
+  }
+
+  formatTimer(seconds: number): string {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
 
   formatDate(dateStr: string): string {
     const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -410,18 +596,18 @@ export class ReuniaoDetalhe implements OnInit {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
 
-  statusLabel(s: string): string {
-    const m: Record<string, string> = { AGENDADA: 'Agendada', EM_ANDAMENTO: 'Em andamento', FINALIZADA: 'Finalizada', CANCELADA: 'Cancelada' };
+  statusLabel(s: MeetingStatus): string {
+    const m: Record<MeetingStatus, string> = { NAO_INICIADO: 'Não iniciada', EM_ANDAMENTO: 'Em andamento', CONCLUIDO: 'Concluída' };
     return m[s] ?? s;
   }
 
-  statusColor(s: string): string {
-    const m: Record<string, string> = { AGENDADA: 'var(--color-primary)', EM_ANDAMENTO: 'var(--color-warning)', FINALIZADA: 'var(--color-success)', CANCELADA: 'var(--color-danger)' };
+  statusColor(s: MeetingStatus): string {
+    const m: Record<MeetingStatus, string> = { NAO_INICIADO: 'var(--color-primary)', EM_ANDAMENTO: 'var(--color-warning)', CONCLUIDO: 'var(--color-success)' };
     return m[s] ?? 'var(--color-text-secondary)';
   }
 
-  statusBg(s: string): string {
-    const m: Record<string, string> = { AGENDADA: 'rgba(6,182,212,0.15)', EM_ANDAMENTO: 'rgba(245,158,11,0.15)', FINALIZADA: 'rgba(16,185,129,0.15)', CANCELADA: 'rgba(239,68,68,0.15)' };
+  statusBg(s: MeetingStatus): string {
+    const m: Record<MeetingStatus, string> = { NAO_INICIADO: 'rgba(6,182,212,0.15)', EM_ANDAMENTO: 'rgba(245,158,11,0.15)', CONCLUIDO: 'rgba(16,185,129,0.15)' };
     return m[s] ?? 'rgba(148,163,184,0.1)';
   }
 
@@ -430,28 +616,28 @@ export class ReuniaoDetalhe implements OnInit {
     return m[r] ?? r;
   }
 
-  participationLabel(s?: string | null): string {
-    const m: Record<string, string> = { SIM: 'Confirmado', NAO: 'Recusado', TALVEZ: 'Talvez' };
-    return s ? (m[s] ?? s) : 'Pendente';
+  participationLabel(p?: ParticipantParticipation): string {
+    const m: Record<string, string> = { SIM: 'Confirmado', NAO: 'Recusado', TALVEZ: 'Talvez', PARTICIPOU: 'Participou', NAO_PARTICIPOU: 'Não participou' };
+    return p ? (m[p] ?? p) : 'Pendente';
   }
 
-  participationColor(s?: string | null): string {
-    const m: Record<string, string> = { SIM: 'var(--color-success)', NAO: 'var(--color-danger)', TALVEZ: 'var(--color-warning)' };
-    return s ? (m[s] ?? 'var(--color-text-muted)') : 'var(--color-text-muted)';
+  participationColor(p?: ParticipantParticipation): string {
+    const m: Record<string, string> = { SIM: 'var(--color-success)', PARTICIPOU: 'var(--color-success)', NAO: 'var(--color-danger)', NAO_PARTICIPOU: 'var(--color-danger)', TALVEZ: 'var(--color-warning)' };
+    return p ? (m[p] ?? 'var(--color-text-muted)') : 'var(--color-text-muted)';
   }
 
-  participationBg(s?: string | null): string {
-    const m: Record<string, string> = { SIM: 'rgba(16,185,129,0.15)', NAO: 'rgba(239,68,68,0.15)', TALVEZ: 'rgba(245,158,11,0.15)' };
-    return s ? (m[s] ?? 'rgba(148,163,184,0.1)') : 'rgba(148,163,184,0.1)';
+  participationBg(p?: ParticipantParticipation): string {
+    const m: Record<string, string> = { SIM: 'rgba(16,185,129,0.15)', PARTICIPOU: 'rgba(16,185,129,0.15)', NAO: 'rgba(239,68,68,0.15)', NAO_PARTICIPOU: 'rgba(239,68,68,0.15)', TALVEZ: 'rgba(245,158,11,0.15)' };
+    return p ? (m[p] ?? 'rgba(148,163,184,0.1)') : 'rgba(148,163,184,0.1)';
   }
 
-  priorityColor(p: string): string {
-    const m: Record<string, string> = { ALTA: 'var(--color-danger)', MEDIA: 'var(--color-warning)', BAIXA: 'var(--color-success)' };
+  priorityColor(p: TopicPriority): string {
+    const m: Record<TopicPriority, string> = { ALTA: 'var(--color-danger)', MEDIA: 'var(--color-warning)', BAIXA: 'var(--color-success)' };
     return m[p] ?? 'var(--color-text-secondary)';
   }
 
-  priorityBg(p: string): string {
-    const m: Record<string, string> = { ALTA: 'rgba(239,68,68,0.15)', MEDIA: 'rgba(245,158,11,0.15)', BAIXA: 'rgba(16,185,129,0.15)' };
+  priorityBg(p: TopicPriority): string {
+    const m: Record<TopicPriority, string> = { ALTA: 'rgba(239,68,68,0.15)', MEDIA: 'rgba(245,158,11,0.15)', BAIXA: 'rgba(16,185,129,0.15)' };
     return m[p] ?? 'rgba(148,163,184,0.1)';
   }
 
@@ -464,7 +650,5 @@ export class ReuniaoDetalhe implements OnInit {
     'linear-gradient(135deg, #06B6D4, #0891B2)',
   ];
 
-  avatarGradient(i: number): string {
-    return this.gradients[i % this.gradients.length];
-  }
+  avatarGradient(i: number): string { return this.gradients[i % this.gradients.length]; }
 }

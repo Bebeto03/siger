@@ -1,39 +1,39 @@
 export class Enums {
 
-  public static userType = [
-    { label: 'Admin', value: 'ADMIN' },
-    { label: 'Organizador', value: 'ORGANIZADOR' },
+  static userType = [
+    { label: 'Admin',        value: 'ADMIN'        },
+    { label: 'Organizador',  value: 'ORGANIZADOR'  },
     { label: 'Participante', value: 'PARTICIPANTE' },
   ];
 
-  public static userStatus = [
-    { label: 'Ativo', value: 'ATIVO' },
+  static userStatus = [
+    { label: 'Ativo',   value: 'ATIVO'   },
     { label: 'Inativo', value: 'INATIVO' },
   ];
 
-  public static topicPriority = [
-    { label: 'Baixa', value: 'BAIXA' },
+  static meetingStatus = [
+    { label: 'Não iniciado',  value: 'NAO_INICIADO'  },
+    { label: 'Em andamento',  value: 'EM_ANDAMENTO'  },
+    { label: 'Concluído',     value: 'CONCLUIDO'     },
+  ];
+
+  static topicPriority = [
+    { label: 'Alta',  value: 'ALTA'  },
     { label: 'Média', value: 'MEDIA' },
-    { label: 'Alta', value: 'ALTA' },
+    { label: 'Baixa', value: 'BAIXA' },
   ];
 
-  public static participantRole = [
-    { label: 'Organizador', value: 'ORGANIZADOR' },
+  static participantRole = [
+    { label: 'Organizador',  value: 'ORGANIZADOR'  },
     { label: 'Participante', value: 'PARTICIPANTE' },
-    { label: 'Palestrante', value: 'PALESTRANTE' },
+    { label: 'Palestrante',  value: 'PALESTRANTE'  },
   ];
 
-  public static participantParticipation = [
+  static participantParticipation = [
     { label: 'Não participou', value: 'NAO_PARTICIPOU' },
-    { label: 'Participou', value: 'PARTICIPOU' },
-    { label: 'Sim', value: 'SIM' },
-    { label: 'Não', value: 'NAO' },
-    { label: 'Talvez', value: 'TALVEZ' },
-  ];
-
-  public static meetingStatus = [
-    { label: 'Não iniciado', value: 'NAO_INCIADO' },
-    { label: 'Em andamento', value: 'EM_ANDAMENTO' },
-    { label: 'Concluído', value: 'CONCLUIDO' },
+    { label: 'Participou',     value: 'PARTICIPOU'     },
+    { label: 'Sim',            value: 'SIM'            },
+    { label: 'Não',            value: 'NAO'            },
+    { label: 'Talvez',         value: 'TALVEZ'         },
   ];
 }

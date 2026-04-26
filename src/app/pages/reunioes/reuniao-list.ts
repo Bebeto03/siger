@@ -1,8 +1,11 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { MeetingService, Meeting } from '../../core/services/meeting.service';
+import { MeetingService } from '../../core/services/meeting.service';
+import { Meeting, MeetingStatus } from '../../core/models/meeting.model';
 import { NotificationService } from '../../core/services/notification.service';
+import { LogService } from '../../core/services/log.service';
+import { AuthService } from '../../core/services/auth.service';
 import { ToastComponent } from '../../shared/components/toast/toast';
 
 @Component({
@@ -29,7 +32,6 @@ import { ToastComponent } from '../../shared/components/toast/toast';
           <p class="text-sm mt-0.5" style="color: var(--color-text-muted)">Gerencie todas as suas reuniões</p>
         </div>
         <div class="flex items-center gap-2">
-          <!-- View toggle -->
           <div class="flex items-center gap-1 rounded-lg p-1" style="background: var(--color-surface-light)">
             @for (v of views; track v.id) {
               <button (click)="activeView.set(v.id)"
@@ -53,7 +55,7 @@ import { ToastComponent } from '../../shared/components/toast/toast';
         <div class="relative mb-5">
           <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm" style="color: var(--color-text-muted)">🔍</span>
           <input type="text" [ngModel]="searchText()" (ngModelChange)="searchText.set($event)"
-            placeholder="Buscar reuniões por título, local ou data..."
+            placeholder="Buscar reuniões por título, local ou descrição..."
             class="w-full pl-10 pr-4 py-3 rounded-xl text-sm"
             style="background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text-primary)" />
         </div>
@@ -113,12 +115,11 @@ import { ToastComponent } from '../../shared/components/toast/toast';
                       <span class="text-xs flex items-center gap-1" style="color: var(--color-text-secondary)">
                         📍 {{ m.location }}
                       </span>
-                      <span class="text-xs flex items-center gap-1" style="color: var(--color-text-secondary)">
-                        👥 {{ confirmedCount(m) }}/{{ m.participants.length }} confirmados
-                      </span>
-                      <span class="text-xs flex items-center gap-1" style="color: var(--color-text-secondary)">
-                        📋 {{ m.topics.length }} pautas
-                      </span>
+                      @if (m.organizer?.name) {
+                        <span class="text-xs flex items-center gap-1" style="color: var(--color-text-secondary)">
+                          👤 {{ m.organizer!.name }}
+                        </span>
+                      }
                     </div>
                   </div>
 
@@ -157,7 +158,7 @@ import { ToastComponent } from '../../shared/components/toast/toast';
           </div>
 
         } @else {
-          <!-- Calendar View (placeholder visual) -->
+          <!-- Calendar View -->
           <div class="rounded-xl p-6" style="background: var(--color-surface); border: 1px solid var(--color-border)">
             <div class="flex items-center justify-between mb-5">
               <h3 class="text-lg font-bold" style="color: var(--color-text-primary)">{{ calendarLabel() }}</h3>
@@ -229,21 +230,23 @@ import { ToastComponent } from '../../shared/components/toast/toast';
 })
 export class ReuniaoList implements OnInit {
   private meetingService = inject(MeetingService);
-  private notify = inject(NotificationService);
-  private router = inject(Router);
+  private notify         = inject(NotificationService);
+  private logService     = inject(LogService);
+  private auth           = inject(AuthService);
+  private router         = inject(Router);
 
-  meetings = signal<Meeting[]>([]);
-  loading = signal(false);
-  activeView = signal<'list' | 'calendar'>('list');
-  searchText = signal('');
+  meetings    = signal<Meeting[]>([]);
+  loading     = signal(false);
+  activeView  = signal<'list' | 'calendar'>('list');
+  searchText  = signal('');
   deleteTarget = signal<Meeting | null>(null);
-  deleting = signal(false);
+  deleting    = signal(false);
 
-  calendarYear = signal(new Date().getFullYear());
+  calendarYear  = signal(new Date().getFullYear());
   calendarMonth = signal(new Date().getMonth());
 
-  readonly views = [{ id: 'list' as const, label: 'Lista' }, { id: 'calendar' as const, label: 'Calendário' }];
-  readonly weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  readonly views      = [{ id: 'list' as const, label: 'Lista' }, { id: 'calendar' as const, label: 'Calendário' }];
+  readonly weekDays   = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
   readonly monthNames = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
   filtered = computed(() => {
@@ -259,29 +262,26 @@ export class ReuniaoList implements OnInit {
   stats = computed(() => {
     const all = this.meetings();
     return [
-      { label: 'Total', value: all.length, color: 'var(--color-text-primary)' },
-      { label: 'Agendadas', value: all.filter(m => m.status === 'AGENDADA').length, color: 'var(--color-primary)' },
-      { label: 'Em andamento', value: all.filter(m => m.status === 'EM_ANDAMENTO').length, color: 'var(--color-warning)' },
-      { label: 'Finalizadas', value: all.filter(m => m.status === 'FINALIZADA').length, color: 'var(--color-success)' },
+      { label: 'Total',        value: all.length,                                              color: 'var(--color-text-primary)' },
+      { label: 'Não iniciadas', value: all.filter(m => m.status === 'NAO_INICIADO').length,   color: 'var(--color-primary)'      },
+      { label: 'Em andamento', value: all.filter(m => m.status === 'EM_ANDAMENTO').length,    color: 'var(--color-warning)'      },
+      { label: 'Concluídas',   value: all.filter(m => m.status === 'CONCLUIDO').length,       color: 'var(--color-success)'      },
     ];
   });
 
-  calendarLabel = computed(() =>
-    `${this.monthNames[this.calendarMonth()]} ${this.calendarYear()}`
-  );
+  calendarLabel = computed(() => `${this.monthNames[this.calendarMonth()]} ${this.calendarYear()}`);
 
   calendarCells = computed(() => {
-    const year = this.calendarYear();
+    const year  = this.calendarYear();
     const month = this.calendarMonth();
-    const firstDay = new Date(year, month, 1).getDay();
+    const firstDay    = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const today = new Date();
     const cells: { day: number | null; isToday: boolean; meetings: Meeting[] }[] = [];
 
     for (let i = 0; i < firstDay; i++) cells.push({ day: null, isToday: false, meetings: [] });
-
     for (let d = 1; d <= daysInMonth; d++) {
-      const isToday = today.getDate() === d && today.getMonth() === month && today.getFullYear() === year;
+      const isToday  = today.getDate() === d && today.getMonth() === month && today.getFullYear() === year;
       const meetings = this.meetings().filter(m => {
         const date = new Date(m.meetingDate);
         return date.getDate() === d && date.getMonth() === month && date.getFullYear() === year;
@@ -291,9 +291,7 @@ export class ReuniaoList implements OnInit {
     return cells;
   });
 
-  async ngOnInit(): Promise<void> {
-    await this.load();
-  }
+  async ngOnInit(): Promise<void> { await this.load(); }
 
   async load(): Promise<void> {
     this.loading.set(true);
@@ -306,8 +304,8 @@ export class ReuniaoList implements OnInit {
     }
   }
 
-  goCreate(): void { this.router.navigate(['/reunioes/nova']); }
-  goEdit(id: number): void { this.router.navigate(['/reunioes', id, 'editar']); }
+  goCreate(): void  { this.router.navigate(['/reunioes/nova']); }
+  goEdit(id: number): void   { this.router.navigate(['/reunioes', id, 'editar']); }
   goDetail(id: number): void { this.router.navigate(['/reunioes', id]); }
 
   confirmDelete(m: Meeting): void { this.deleteTarget.set(m); }
@@ -318,6 +316,7 @@ export class ReuniaoList implements OnInit {
     this.deleting.set(true);
     try {
       await this.meetingService.excluir(m.id);
+      this.logService.registrar(`Reunião excluída: ${m.title}`, this.auth.getNomeUsuario()).catch(() => {});
       this.notify.success('Reunião excluída.');
       this.deleteTarget.set(null);
       await this.load();
@@ -351,30 +350,29 @@ export class ReuniaoList implements OnInit {
     return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
   }
 
-  confirmedCount(m: Meeting): number {
-    return m.participants.filter(p => p.status === 'SIM').length;
-  }
-
-  statusLabel(status: string): string {
-    const map: Record<string, string> = {
-      AGENDADA: 'Agendada', EM_ANDAMENTO: 'Em andamento',
-      FINALIZADA: 'Finalizada', CANCELADA: 'Cancelada',
+  statusLabel(status: MeetingStatus): string {
+    const map: Record<MeetingStatus, string> = {
+      NAO_INICIADO: 'Não iniciada',
+      EM_ANDAMENTO: 'Em andamento',
+      CONCLUIDO:    'Concluída',
     };
     return map[status] ?? status;
   }
 
-  statusColor(status: string): string {
-    const map: Record<string, string> = {
-      AGENDADA: 'var(--color-primary)', EM_ANDAMENTO: 'var(--color-warning)',
-      FINALIZADA: 'var(--color-success)', CANCELADA: 'var(--color-danger)',
+  statusColor(status: MeetingStatus): string {
+    const map: Record<MeetingStatus, string> = {
+      NAO_INICIADO: 'var(--color-primary)',
+      EM_ANDAMENTO: 'var(--color-warning)',
+      CONCLUIDO:    'var(--color-success)',
     };
     return map[status] ?? 'var(--color-text-secondary)';
   }
 
-  statusBg(status: string): string {
-    const map: Record<string, string> = {
-      AGENDADA: 'rgba(6,182,212,0.15)', EM_ANDAMENTO: 'rgba(245,158,11,0.15)',
-      FINALIZADA: 'rgba(16,185,129,0.15)', CANCELADA: 'rgba(239,68,68,0.15)',
+  statusBg(status: MeetingStatus): string {
+    const map: Record<MeetingStatus, string> = {
+      NAO_INICIADO: 'rgba(6,182,212,0.15)',
+      EM_ANDAMENTO: 'rgba(245,158,11,0.15)',
+      CONCLUIDO:    'rgba(16,185,129,0.15)',
     };
     return map[status] ?? 'rgba(148,163,184,0.1)';
   }

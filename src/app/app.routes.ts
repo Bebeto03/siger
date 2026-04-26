@@ -40,7 +40,7 @@ export const routes: Routes = [
       {
         path: 'usuarios',
         loadChildren: () => import('./pages/usuarios/usuarios.routes').then(m => m.USUARIOS_ROUTES),
-        canActivate: [roleGuard(['ADMIN'])],
+        canActivate: [roleGuard(['ROLE_ADMIN'])],
       },
       {
         path: 'configuracoes',
