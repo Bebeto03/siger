@@ -38,6 +38,14 @@ export const routes: Routes = [
         loadChildren: () => import('./pages/reunioes/reunioes.routes').then(m => m.REUNIOES_ROUTES),
       },
       {
+        path: 'tarefas',
+        loadChildren: () => import('./pages/tarefas/tarefas.routes').then(m => m.TAREFAS_ROUTES),
+      },
+      {
+        path: 'atas',
+        loadChildren: () => import('./pages/atas/atas.routes').then(m => m.ATAS_ROUTES),
+      },
+      {
         path: 'usuarios',
         loadChildren: () => import('./pages/usuarios/usuarios.routes').then(m => m.USUARIOS_ROUTES),
         canActivate: [roleGuard(['ROLE_ADMIN'])],

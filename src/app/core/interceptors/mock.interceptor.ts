@@ -148,6 +148,21 @@ let mockTopics: any[] = [
 ];
 let nextTopicId = 14;
 
+// ─── Fake Tasks ──────────────────────────────────────────────────────────────
+
+let mockTasks: any[] = [
+  { id: 1,  title: 'Atualizar doc de requisitos',   status: 'PENDENTE',     dueDate: '2026-04-30', assignee: { id: 3, name: 'Maria Silva',      email: 'maria@siger.com'  }, meeting: { id: 1, title: 'Sprint Planning S4'    } },
+  { id: 2,  title: 'Configurar ambiente Docker',     status: 'EM_ANDAMENTO', dueDate: '2026-04-29', assignee: { id: 4, name: 'Carlos Souza',     email: 'carlos@siger.com' }, meeting: { id: 1, title: 'Sprint Planning S4'    } },
+  { id: 3,  title: 'Implementar exportação PDF',     status: 'PENDENTE',     dueDate: '2026-05-02', assignee: { id: 2, name: 'João Organizador', email: 'joao@siger.com'   }, meeting: { id: 1, title: 'Sprint Planning S4'    } },
+  { id: 4,  title: 'Revisar pendências Projeto X',   status: 'EM_ANDAMENTO', dueDate: '2026-04-28', assignee: { id: 5, name: 'Ana Pereira',      email: 'ana@siger.com'    }, meeting: { id: 2, title: 'Review de Ata — Projeto X' } },
+  { id: 5,  title: 'Levantar próximos passos',       status: 'PENDENTE',     dueDate: '2026-04-29', assignee: { id: 3, name: 'Maria Silva',      email: 'maria@siger.com'  }, meeting: { id: 2, title: 'Review de Ata — Projeto X' } },
+  { id: 6,  title: 'Setup inicial do projeto IA',    status: 'PENDENTE',     dueDate: '2026-05-05', assignee: { id: 2, name: 'João Organizador', email: 'joao@siger.com'   }, meeting: { id: 4, title: 'Kickoff — Módulo de IA'   } },
+  { id: 7,  title: 'Escolher stack de ML',           status: 'PENDENTE',     dueDate: '2026-05-06', assignee: { id: 5, name: 'Ana Pereira',      email: 'ana@siger.com'    }, meeting: { id: 4, title: 'Kickoff — Módulo de IA'   } },
+  { id: 8,  title: 'Documentar retrospectiva S3',    status: 'CONCLUIDA',    dueDate: '2026-04-26', assignee: { id: 2, name: 'João Organizador', email: 'joao@siger.com'   }, meeting: { id: 3, title: 'Retrospectiva S3'          } },
+  { id: 9,  title: 'Aplicar melhorias identificadas',status: 'CONCLUIDA',    dueDate: '2026-04-26', assignee: { id: 3, name: 'Maria Silva',      email: 'maria@siger.com'  }, meeting: { id: 3, title: 'Retrospectiva S3'          } },
+];
+let nextTaskId = 10;
+
 // ─── Interceptor ─────────────────────────────────────────────────────────────
 
 export const mockInterceptor: HttpInterceptorFn = (req, next) => {
@@ -330,6 +345,37 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
   if (method === 'DELETE' && url.match(/^\/api\/topic\/\d+$/)) {
     const id = Number(url.split('/').pop());
     mockTopics = mockTopics.filter(x => x.id !== id);
+    return respond(null, 204);
+  }
+
+  // ── Tasks ────────────────────────────────────────────────────────────────────
+
+  if (method === 'GET' && url === '/api/task/findAll')
+    return respond([...mockTasks]);
+
+  if (method === 'GET' && url.match(/^\/api\/task\/\d+$/)) {
+    const id = Number(url.split('/').pop());
+    const t  = mockTasks.find(x => x.id === id);
+    return t ? respond(t) : respond({ message: 'Não encontrado' }, 404);
+  }
+
+  if (method === 'POST' && url === '/api/task') {
+    const body = req.body as any;
+    const novo = { ...body, id: nextTaskId++, createdAt: new Date().toISOString() };
+    mockTasks.push(novo);
+    return respond(novo, 201);
+  }
+
+  if (method === 'PUT' && url.match(/^\/api\/task\/\d+$/)) {
+    const id  = Number(url.split('/').pop());
+    const idx = mockTasks.findIndex(x => x.id === id);
+    if (idx !== -1) mockTasks[idx] = { ...mockTasks[idx], ...(req.body as any), id };
+    return respond(mockTasks[idx] ?? req.body);
+  }
+
+  if (method === 'DELETE' && url.match(/^\/api\/task\/\d+$/)) {
+    const id = Number(url.split('/').pop());
+    mockTasks = mockTasks.filter(x => x.id !== id);
     return respond(null, 204);
   }
 

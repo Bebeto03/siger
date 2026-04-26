@@ -13,6 +13,10 @@ import { Meeting, MeetingStatus } from '../../core/models/meeting.model';
 import { Participant, ParticipantParticipation } from '../../core/models/participant.model';
 import { Topic, TopicPriority } from '../../core/models/topic.model';
 import { MeetingMinutes } from '../../core/models/meeting-minutes.model';
+import { TaskService } from '../../core/services/task.service';
+import { Task, TaskStatus } from '../../core/models/task.model';
+import { UserService } from '../../core/services/user.service';
+import { User } from '../../core/models/user.model';
 
 type ActiveTab = 'info' | 'participants' | 'topics' | 'minutes' | 'tasks';
 
@@ -346,27 +350,107 @@ type ActiveTab = 'info' | 'participants' | 'topics' | 'minutes' | 'tasks';
             </div>
           }
 
-          <!-- Tab: Tarefas — Fase 3 -->
+          <!-- Tab: Tarefas -->
           @if (activeTab() === 'tasks') {
             <div class="rounded-xl p-5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
               <div class="flex items-center justify-between mb-4">
-                <h3 class="text-base font-bold" style="color: var(--color-text-primary)">Tarefas da Reunião</h3>
-                <span class="px-2.5 py-1 rounded-full text-xs font-semibold"
-                  style="background: rgba(245,158,11,0.15); color: var(--color-warning)">
-                  Fase 3
-                </span>
+                <h3 class="text-base font-bold" style="color: var(--color-text-primary)">
+                  Tarefas da Reunião ({{ tasks().length }})
+                </h3>
+                <button (click)="openTaskModal()"
+                  class="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  style="background: var(--color-primary); color: #000; border: none; cursor: pointer">
+                  + Nova Tarefa
+                </button>
               </div>
-              <div class="text-center py-12">
-                <div class="text-4xl mb-3">✅</div>
-                <p class="font-medium mb-1" style="color: var(--color-text-secondary)">Nenhuma tarefa criada.</p>
-                <p class="text-sm" style="color: var(--color-text-muted)">Gerenciamento de tarefas será implementado na Fase 3.</p>
-              </div>
+              @if (loadingTasks()) {
+                <div class="flex items-center gap-2 py-6" style="color: var(--color-text-muted)">
+                  <div class="spinner w-4 h-4 rounded-full border-2" style="border-color: var(--color-primary); border-top-color: transparent"></div>
+                  <span class="text-sm">Carregando tarefas...</span>
+                </div>
+              } @else {
+                <div class="flex flex-col gap-2">
+                  @for (t of tasks(); track t.id) {
+                    <div class="flex items-center gap-3 p-4 rounded-xl"
+                         style="background: var(--color-surface-light); border: 1px solid var(--color-border)">
+                      <span class="text-lg shrink-0">
+                        {{ t.status === 'CONCLUIDA' ? '✅' : t.status === 'EM_ANDAMENTO' ? '🔄' : '⬜' }}
+                      </span>
+                      <div class="flex-1">
+                        <div class="text-sm font-semibold"
+                             [style.color]="t.status === 'CONCLUIDA' ? 'var(--color-text-muted)' : 'var(--color-text-primary)'"
+                             [style.textDecoration]="t.status === 'CONCLUIDA' ? 'line-through' : 'none'">
+                          {{ t.title }}
+                        </div>
+                        <div class="text-xs mt-1 flex items-center gap-3" style="color: var(--color-text-muted)">
+                          @if (t.assignee?.name) {
+                            <span>👤 {{ t.assignee!.name }}</span>
+                          }
+                          @if (t.dueDate) {
+                            <span>🕐 Prazo: {{ formatShortDate(t.dueDate) }}</span>
+                          }
+                        </div>
+                      </div>
+                      <span class="px-2.5 py-1 rounded-full text-xs font-semibold"
+                            [style.background]="taskStatusBg(t.status)"
+                            [style.color]="taskStatusColor(t.status)">
+                        {{ taskStatusLabel(t.status) }}
+                      </span>
+                    </div>
+                  } @empty {
+                    <div class="text-center py-10">
+                      <div class="text-4xl mb-3">✅</div>
+                      <p class="font-medium mb-1" style="color: var(--color-text-secondary)">Nenhuma tarefa criada.</p>
+                      <p class="text-sm" style="color: var(--color-text-muted)">Clique em "+ Nova Tarefa" para adicionar.</p>
+                    </div>
+                  }
+                </div>
+              }
             </div>
           }
 
         </div>
       }
     </div>
+
+    <!-- Modal Nova Tarefa -->
+    @if (showTaskModal()) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px)">
+        <div class="rounded-2xl w-full mx-4 p-6" style="max-width: 440px; background: var(--color-surface); border: 1px solid var(--color-border)">
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="text-lg font-bold" style="color: var(--color-text-primary)">Nova Tarefa</h2>
+            <button (click)="showTaskModal.set(false)" style="background: var(--color-surface-light); border: none; border-radius: 8px; width: 32px; height: 32px; cursor: pointer; color: var(--color-text-muted); font-size: 16px">✕</button>
+          </div>
+          <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Título *</label>
+          <input [(ngModel)]="taskForm.title" placeholder="Descreva a tarefa..."
+            class="w-full px-3 py-2.5 mb-4 rounded-lg"
+            style="background: var(--color-surface-light); border: 1px solid var(--color-border); color: var(--color-text-primary); outline: none" />
+          <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Responsável</label>
+          <select [(ngModel)]="taskForm.assigneeId" class="w-full px-3 py-2.5 mb-4 rounded-lg"
+            style="background: var(--color-surface-light); border: 1px solid var(--color-border); color: var(--color-text-primary); outline: none">
+            <option [ngValue]="null">Sem responsável</option>
+            @for (u of allUsers(); track u.id) {
+              <option [ngValue]="u.id">{{ u.name }}</option>
+            }
+          </select>
+          <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Prazo</label>
+          <input type="date" [(ngModel)]="taskForm.dueDate" class="w-full px-3 py-2.5 mb-6 rounded-lg"
+            style="background: var(--color-surface-light); border: 1px solid var(--color-border); color: var(--color-text-primary); outline: none" />
+          <div class="flex gap-3">
+            <button (click)="showTaskModal.set(false)" class="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium"
+              style="background: var(--color-surface-light); color: var(--color-text-secondary); border: 1px solid var(--color-border); cursor: pointer">
+              Cancelar
+            </button>
+            <button (click)="submitTask()" [disabled]="savingTask() || !taskForm.title?.trim()"
+              class="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold"
+              [style.opacity]="savingTask() || !taskForm.title?.trim() ? '0.5' : '1'"
+              style="background: var(--color-primary); color: #000; border: none; cursor: pointer">
+              {{ savingTask() ? 'Criando...' : 'Criar Tarefa' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
 
     <!-- Delete confirm -->
     @if (showDeleteModal()) {
@@ -400,6 +484,8 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
   private participantService = inject(ParticipantService);
   private topicService       = inject(TopicService);
   private minutesService     = inject(MeetingMinutesService);
+  private taskService        = inject(TaskService);
+  private userService        = inject(UserService);
   private logService         = inject(LogService);
   private auth               = inject(AuthService);
   private notify             = inject(NotificationService);
@@ -420,6 +506,13 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
 
   minutesForm = { objectives: '', notes: '', decision: '' };
   minutesHistory = signal<{ author: string; date: string }[]>([]);
+
+  tasks        = signal<Task[]>([]);
+  allUsers     = signal<User[]>([]);
+  loadingTasks = signal(false);
+  savingTask   = signal(false);
+  showTaskModal = signal(false);
+  taskForm: { title: string; assigneeId: number | null; dueDate: string } = { title: '', assigneeId: null, dueDate: '' };
 
   activeTimer = signal<{ topicId: number; remaining: number } | null>(null);
   private timerInterval: ReturnType<typeof setInterval> | null = null;
@@ -447,6 +540,8 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
     }
     this.loadParticipants(id);
     this.loadMinutesAndTopics(id);
+    this.loadTasks(id);
+    this.userService.listar().then(u => this.allUsers.set(u)).catch(() => {});
   }
 
   ngOnDestroy(): void { this.stopTimer(); }
@@ -537,6 +632,67 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
     } finally {
       this.savingMinutes.set(false);
     }
+  }
+
+  private async loadTasks(meetingId: number): Promise<void> {
+    this.loadingTasks.set(true);
+    try {
+      this.tasks.set(await this.taskService.listarPorReuniao(meetingId));
+    } catch {
+      this.notify.error('Erro ao carregar tarefas.');
+    } finally {
+      this.loadingTasks.set(false);
+    }
+  }
+
+  openTaskModal(): void {
+    this.taskForm = { title: '', assigneeId: null, dueDate: '' };
+    this.showTaskModal.set(true);
+  }
+
+  async submitTask(): Promise<void> {
+    if (!this.taskForm.title?.trim()) return;
+    this.savingTask.set(true);
+    try {
+      const meetingId = this.meeting()!.id!;
+      const assignee  = this.taskForm.assigneeId
+        ? this.allUsers().find(u => u.id === this.taskForm.assigneeId)
+        : undefined;
+      const nova = await this.taskService.criar({
+        title:    this.taskForm.title.trim(),
+        status:   'PENDENTE',
+        dueDate:  this.taskForm.dueDate || undefined,
+        assignee: assignee ? { id: assignee.id, name: assignee.name, email: assignee.email } : undefined,
+        meeting:  { id: meetingId, title: this.meeting()!.title },
+      });
+      this.tasks.update(list => [...list, nova]);
+      this.showTaskModal.set(false);
+      this.notify.success('Tarefa criada!');
+    } catch {
+      this.notify.error('Erro ao criar tarefa.');
+    } finally {
+      this.savingTask.set(false);
+    }
+  }
+
+  taskStatusLabel(s: TaskStatus): string {
+    const m: Record<TaskStatus, string> = { PENDENTE: 'Pendente', EM_ANDAMENTO: 'Em andamento', CONCLUIDA: 'Concluída' };
+    return m[s] ?? s;
+  }
+
+  taskStatusColor(s: TaskStatus): string {
+    const m: Record<TaskStatus, string> = { PENDENTE: 'var(--color-text-muted)', EM_ANDAMENTO: 'var(--color-warning)', CONCLUIDA: 'var(--color-success)' };
+    return m[s] ?? 'var(--color-text-secondary)';
+  }
+
+  taskStatusBg(s: TaskStatus): string {
+    const m: Record<TaskStatus, string> = { PENDENTE: 'rgba(148,163,184,0.1)', EM_ANDAMENTO: 'rgba(245,158,11,0.15)', CONCLUIDA: 'rgba(16,185,129,0.15)' };
+    return m[s] ?? 'rgba(148,163,184,0.1)';
+  }
+
+  formatShortDate(dateStr: string): string {
+    const d = new Date(dateStr);
+    return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}`;
   }
 
   onComingSoon(feature: string): void {

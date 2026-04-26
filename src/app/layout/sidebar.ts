@@ -82,9 +82,11 @@ export class AppSidebar {
   toggleCollapse = output<void>();
 
   readonly navItems: NavItem[] = [
-    { id: 'dashboard',     label: 'Dashboard',    icon: '🏠', route: '/dashboard' },
-    { id: 'reunioes',      label: 'Reuniões',      icon: '📅', route: '/reunioes' },
-    { id: 'usuarios',      label: 'Usuários',      icon: '👥', route: '/usuarios', adminOnly: true },
+    { id: 'dashboard',     label: 'Dashboard',    icon: '🏠', route: '/dashboard'     },
+    { id: 'reunioes',      label: 'Reuniões',      icon: '📅', route: '/reunioes'      },
+    { id: 'tarefas',       label: 'Tarefas',       icon: '✅', route: '/tarefas'       },
+    { id: 'atas',          label: 'Atas',           icon: '📋', route: '/atas'          },
+    { id: 'usuarios',      label: 'Usuários',      icon: '👥', route: '/usuarios',      adminOnly: true },
     { id: 'configuracoes', label: 'Configurações', icon: '⚙️', route: '/configuracoes' },
   ];
 
