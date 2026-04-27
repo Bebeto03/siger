@@ -1,6 +1,6 @@
 export const environment = {
   production: false,
-  apiUrl: '',
+  apiUrl: '/api',
   tokenKey: 'siger_token',
   mockApi: false,
 };

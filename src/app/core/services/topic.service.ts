@@ -8,7 +8,7 @@ export type { Topic } from '../models/topic.model';
 
 @Injectable({ providedIn: 'root' })
 export class TopicService {
-  private readonly api = `${environment.apiUrl}/api/topic`;
+  private readonly api = `${environment.apiUrl}/topic`;
 
   constructor(private http: HttpClient) {}
 

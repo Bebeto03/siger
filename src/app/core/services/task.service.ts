@@ -8,7 +8,7 @@ export type { Task } from '../models/task.model';
 
 @Injectable({ providedIn: 'root' })
 export class TaskService {
-  private readonly api = `${environment.apiUrl}/api/task`;
+  private readonly api = `${environment.apiUrl}/task`;
 
   constructor(private http: HttpClient) {}
 

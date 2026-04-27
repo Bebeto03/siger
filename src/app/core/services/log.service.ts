@@ -11,7 +11,7 @@ export interface LogEntry {
 
 @Injectable({ providedIn: 'root' })
 export class LogService {
-  private readonly api = `${environment.apiUrl}/api/log`;
+  private readonly api = `${environment.apiUrl}/log`;
 
   constructor(private http: HttpClient) {}
 

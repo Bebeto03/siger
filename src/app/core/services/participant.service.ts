@@ -8,7 +8,7 @@ export type { Participant } from '../models/participant.model';
 
 @Injectable({ providedIn: 'root' })
 export class ParticipantService {
-  private readonly api = `${environment.apiUrl}/api/participant`;
+  private readonly api = `${environment.apiUrl}/participant`;
 
   constructor(private http: HttpClient) {}
 

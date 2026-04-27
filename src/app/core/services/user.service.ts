@@ -8,7 +8,7 @@ import { environment } from '../../../environment/environment';
 @Injectable({ providedIn: 'root' })
 export class UserService extends BaseResourceService<User> {
   constructor(http: HttpClient) {
-    super(`${environment.apiUrl}/api/user`, http);
+    super(`${environment.apiUrl}/user`, http);
   }
 
   override listar(): Promise<User[]> {

@@ -8,7 +8,7 @@ export type { MeetingMinutes } from '../models/meeting-minutes.model';
 
 @Injectable({ providedIn: 'root' })
 export class MeetingMinutesService {
-  private readonly api = `${environment.apiUrl}/api/meeting/minutes`;
+  private readonly api = `${environment.apiUrl}/meeting/minutes`;
 
   constructor(private http: HttpClient) {}
 
