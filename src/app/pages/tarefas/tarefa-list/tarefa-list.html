@@ -1,0 +1,194 @@
+<div class="flex flex-col min-h-full">
+    <app-toast />
+
+    <!-- Top Bar -->
+    <div class="flex items-center justify-between px-7 py-5 border-b" style="background: var(--color-surface); border-color: var(--color-border)">
+    <div>
+        <h1 class="text-xl font-bold" style="color: var(--color-text-primary)">Tarefas</h1>
+        <p class="text-sm mt-0.5" style="color: var(--color-text-muted)">Gerencie tarefas vinculadas às reuniões</p>
+    </div>
+    <div class="flex items-center gap-2">
+        <!-- Filtro por reunião -->
+        <select [(ngModel)]="filterMeetingId" (ngModelChange)="filterMeetingId = $event"
+        class="px-3 py-2 rounded-lg text-sm"
+        style="background: var(--color-surface-light); border: 1px solid var(--color-border); color: var(--color-text-secondary)">
+        <option [ngValue]="null">Todas as reuniões</option>
+        @for (m of meetings(); track m.id) {
+            <option [ngValue]="m.id">{{ m.title }}</option>
+        }
+        </select>
+        <button (click)="openModal()" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold"
+        style="background: var(--color-primary); color: #000; border: none; cursor: pointer">
+        + Nova Tarefa
+        </button>
+    </div>
+    </div>
+
+    <!-- Kanban -->
+    <div class="p-7">
+    @if (loading()) {
+        <div class="flex items-center justify-center py-20 gap-3">
+        <div class="spinner w-5 h-5 rounded-full border-2"
+                style="border-color: var(--color-primary); border-top-color: transparent"></div>
+        <span class="text-sm" style="color: var(--color-text-muted)">Carregando tarefas...</span>
+        </div>
+    } @else {
+        <div class="flex gap-4" style="min-height: 60vh; align-items: flex-start">
+        @for (col of columns; track col.status) {
+            <div class="flex-1 min-w-64 flex flex-col gap-3">
+
+            <!-- Column Header -->
+            <div class="flex items-center gap-2 px-1 mb-1">
+                <div class="w-2 h-2 rounded-full shrink-0" [style.background]="col.color"></div>
+                <span class="text-sm font-bold" style="color: var(--color-text-primary)">{{ col.label }}</span>
+                <span class="px-2 py-0.5 rounded-lg text-xs font-semibold ml-1"
+                style="background: var(--color-surface-light); color: var(--color-text-muted)">
+                {{ tasksByStatus(col.status).length }}
+                </span>
+            </div>
+
+            <!-- Cards -->
+            @for (t of tasksByStatus(col.status); track t.id) {
+                <div class="task-card rounded-xl p-4"
+                    style="background: var(--color-surface); border: 1px solid var(--color-border)">
+                <div class="flex items-start justify-between gap-2 mb-3">
+                    <span class="text-sm font-semibold leading-snug" style="color: var(--color-text-primary)">{{ t.title }}</span>
+                    <button (click)="confirmDelete(t)"
+                    class="shrink-0 text-xs px-2 py-1 rounded-lg"
+                    style="background: rgba(239,68,68,0.08); color: var(--color-danger); border: 1px solid rgba(239,68,68,0.15); cursor: pointer">
+                    🗑
+                    </button>
+                </div>
+
+                @if (t.meeting?.title) {
+                    <div class="flex items-center gap-1 mb-3">
+                    <span class="text-xs" style="color: var(--color-text-muted)">📅 {{ t.meeting.title }}</span>
+                    </div>
+                }
+
+                <div class="flex items-center justify-between mt-2">
+                    <!-- Assignee avatar -->
+                    @if (t.assignee?.name) {
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-full flex items-center justify-center text-white font-bold shrink-0"
+                            style="background: linear-gradient(135deg, #6366F1, #8B5CF6); font-size: 9px">
+                        {{ initials(t.assignee!.name!) }}
+                        </div>
+                        <span class="text-xs" style="color: var(--color-text-muted)">{{ t.assignee!.name }}</span>
+                    </div>
+                    } @else {
+                    <span class="text-xs" style="color: var(--color-text-muted)">Sem responsável</span>
+                    }
+
+                    @if (t.dueDate) {
+                    <span class="text-xs flex items-center gap-1" style="color: var(--color-text-muted)">
+                        🕐 {{ formatDate(t.dueDate) }}
+                    </span>
+                    }
+                </div>
+
+                <!-- Move status buttons -->
+                <div class="flex gap-1 mt-3 pt-3 border-t" style="border-color: var(--color-border)">
+                    @for (c of columns; track c.status) {
+                    @if (c.status !== col.status) {
+                        <button (click)="moveTask(t, c.status)"
+                        class="flex-1 py-1 rounded-lg text-xs font-medium"
+                        [style.color]="c.color"
+                        style="background: var(--color-surface-light); border: 1px solid var(--color-border); cursor: pointer">
+                        → {{ c.label }}
+                        </button>
+                    }
+                    }
+                </div>
+                </div>
+            } @empty {
+                <div class="rounded-xl p-6 text-center"
+                    style="border: 2px dashed var(--color-border)">
+                <p class="text-xs" style="color: var(--color-text-muted)">Nenhuma tarefa aqui.</p>
+                </div>
+            }
+            </div>
+        }
+        </div>
+    }
+    </div>
+</div>
+
+<!-- Modal Nova Tarefa -->
+@if (showModal()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px)">
+    <div class="rounded-2xl w-full mx-4 p-6" style="max-width: 480px; background: var(--color-surface); border: 1px solid var(--color-border)">
+        <div class="flex items-center justify-between mb-5">
+        <h2 class="text-lg font-bold" style="color: var(--color-text-primary)">Nova Tarefa</h2>
+        <button (click)="closeModal()" style="background: var(--color-surface-light); border: none; border-radius: 8px; width: 32px; height: 32px; cursor: pointer; color: var(--color-text-muted); font-size: 16px">✕</button>
+        </div>
+
+        <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Título *</label>
+        <input [(ngModel)]="form.title" placeholder="Descreva a tarefa..."
+        class="w-full px-3 py-2.5 mb-4" />
+
+        <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Reunião *</label>
+        <select [(ngModel)]="form.meetingId" class="w-full px-3 py-2.5 mb-4">
+        <option [ngValue]="null" disabled>Selecione a reunião...</option>
+        @for (m of meetings(); track m.id) {
+            <option [ngValue]="m.id">{{ m.title }}</option>
+        }
+        </select>
+
+        <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Responsável</label>
+        <select [(ngModel)]="form.assigneeId" class="w-full px-3 py-2.5 mb-4">
+        <option [ngValue]="null">Sem responsável</option>
+        @for (u of users(); track u.id) {
+            <option [ngValue]="u.id">{{ u.name }}</option>
+        }
+        </select>
+
+        <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Prazo</label>
+        <input type="date" [(ngModel)]="form.dueDate" class="w-full px-3 py-2.5 mb-4" />
+
+        <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Status</label>
+        <select [(ngModel)]="form.status" class="w-full px-3 py-2.5 mb-6">
+        <option value="PENDENTE">Pendente</option>
+        <option value="EM_ANDAMENTO">Em Andamento</option>
+        <option value="CONCLUIDA">Concluída</option>
+        </select>
+
+        <div class="flex gap-3">
+        <button (click)="closeModal()" class="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium"
+            style="background: var(--color-surface-light); color: var(--color-text-secondary); border: 1px solid var(--color-border); cursor: pointer">
+            Cancelar
+        </button>
+        <button (click)="submitTask()" [disabled]="saving() || !form.title?.trim() || !form.meetingId"
+            class="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold"
+            [style.opacity]="saving() || !form.title?.trim() || !form.meetingId ? '0.5' : '1'"
+            style="background: var(--color-primary); color: #000; border: none; cursor: pointer">
+            {{ saving() ? 'Salvando...' : 'Criar Tarefa' }}
+        </button>
+        </div>
+    </div>
+    </div>
+}
+
+<!-- Delete confirm -->
+@if (deleteTarget()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center" style="background: rgba(0,0,0,0.75)">
+    <div class="rounded-2xl w-full max-w-sm mx-4 p-6"
+            style="background: var(--color-surface); border: 1px solid var(--color-border)">
+        <div class="text-3xl mb-4 text-center">⚠️</div>
+        <h3 class="text-lg font-semibold text-center mb-2" style="color: var(--color-text-primary)">Confirmar Exclusão</h3>
+        <p class="text-sm text-center mb-6" style="color: var(--color-text-secondary)">
+        Excluir <strong style="color: var(--color-text-primary)">{{ deleteTarget()?.title }}</strong>?
+        </p>
+        <div class="flex gap-3">
+        <button (click)="deleteTarget.set(null)" class="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium"
+            style="background: var(--color-surface-light); color: var(--color-text-secondary); border: 1px solid var(--color-border); cursor: pointer">
+            Cancelar
+        </button>
+        <button (click)="executeDelete()" class="flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold"
+            style="background: var(--color-danger); color: #fff; border: none; cursor: pointer">
+            Excluir
+        </button>
+        </div>
+    </div>
+    </div>
+}

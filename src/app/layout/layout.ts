@@ -1,6 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { AppSidebar } from './sidebar';
+import { AppSidebar } from './sidebar/sidebar';
 import { AppTopbar } from './topbar';
 import { ToastComponent } from '../shared/components/toast/toast';
 import { LoadingComponent } from '../shared/components/loading/loading';
