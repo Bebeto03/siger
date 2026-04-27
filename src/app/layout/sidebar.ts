@@ -86,6 +86,7 @@ export class AppSidebar {
     { id: 'reunioes',      label: 'Reuniões',      icon: '📅', route: '/reunioes'      },
     { id: 'tarefas',       label: 'Tarefas',       icon: '✅', route: '/tarefas'       },
     { id: 'atas',          label: 'Atas',           icon: '📋', route: '/atas'          },
+    { id: 'relatorios',    label: 'Relatórios',    icon: '📊', route: '/relatorios'    },
     { id: 'usuarios',      label: 'Usuários',      icon: '👥', route: '/usuarios',      adminOnly: true },
     { id: 'configuracoes', label: 'Configurações', icon: '⚙️', route: '/configuracoes' },
   ];

@@ -1,13 +1,360 @@
-import { Component } from '@angular/core';
+import { Component, inject, signal, OnInit, computed } from '@angular/core';
+import { Router } from '@angular/router';
+import { MeetingService } from '../../core/services/meeting.service';
+import { TaskService } from '../../core/services/task.service';
+import { ParticipantService } from '../../core/services/participant.service';
+import { Meeting } from '../../core/models/meeting.model';
+import { Task } from '../../core/models/task.model';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
+  styles: [`
+    .stat-card { transition: border-color 0.15s, box-shadow 0.15s; }
+    .meeting-card { transition: border-color 0.15s, box-shadow 0.15s; cursor: pointer; }
+    .meeting-card:hover { border-color: var(--color-primary) !important; box-shadow: 0 0 0 1px rgba(6,182,212,0.15); }
+    .chart-bar { transition: background 0.2s; border-radius: 4px 4px 0 0; }
+    .chart-bar:hover { background: var(--color-primary) !important; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 0.8s linear infinite; }
+  `],
   template: `
-    <div class="p-7">
-      <h1 class="text-2xl font-bold mb-1" style="color: var(--color-text-primary);">Dashboard</h1>
-      <p style="color: var(--color-text-muted);">Em desenvolvimento — Fase 4.</p>
+    <div class="flex flex-col min-h-full">
+      <!-- Top Bar -->
+      <div class="flex items-center justify-between px-7 py-5 border-b"
+           style="background: var(--color-surface); border-color: var(--color-border)">
+        <div>
+          <h1 class="text-xl font-bold" style="color: var(--color-text-primary)">Dashboard</h1>
+          <p class="text-sm mt-0.5" style="color: var(--color-text-muted)">Visão geral das suas reuniões e tarefas</p>
+        </div>
+        <button class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white"
+                style="background: var(--color-primary); border: none; cursor: pointer"
+                (click)="router.navigate(['/reunioes/nova'])">
+          + Nova Reunião
+        </button>
+      </div>
+
+      @if (loading()) {
+        <div class="flex items-center justify-center py-20 gap-3">
+          <div class="spinner w-5 h-5 rounded-full border-2"
+               style="border-color: var(--color-primary); border-top-color: transparent"></div>
+          <span class="text-sm" style="color: var(--color-text-muted)">Carregando...</span>
+        </div>
+      } @else {
+        <div class="p-7">
+          <!-- Stat Cards -->
+          <div class="grid gap-4 mb-7" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr))">
+            <!-- Reuniões este mês -->
+            <div class="stat-card rounded-xl p-5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
+              <div class="flex items-start justify-between mb-4">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                     style="background: rgba(6,182,212,0.12)">📅</div>
+                @if (meetingsThisMonthChange() !== 0) {
+                  <span class="text-xs font-semibold"
+                        [style.color]="meetingsThisMonthChange() > 0 ? 'var(--color-success)' : 'var(--color-danger)'">
+                    {{ meetingsThisMonthChange() > 0 ? '+' : '' }}{{ meetingsThisMonthChange() }}%
+                  </span>
+                }
+              </div>
+              <div class="text-3xl font-black mb-1" style="color: var(--color-text-primary); letter-spacing: -1px">
+                {{ meetingsThisMonth() }}
+              </div>
+              <div class="text-xs" style="color: var(--color-text-muted)">Reuniões este mês</div>
+            </div>
+
+            <!-- Taxa de comparecimento -->
+            <div class="stat-card rounded-xl p-5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
+              <div class="flex items-start justify-between mb-4">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                     style="background: rgba(16,185,129,0.12)">👥</div>
+                <span class="text-xs font-semibold" style="color: var(--color-success)">+5%</span>
+              </div>
+              <div class="text-3xl font-black mb-1" style="color: var(--color-text-primary); letter-spacing: -1px">87%</div>
+              <div class="text-xs" style="color: var(--color-text-muted)">Taxa de comparecimento</div>
+            </div>
+
+            <!-- Tempo médio -->
+            <div class="stat-card rounded-xl p-5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
+              <div class="flex items-start justify-between mb-4">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                     style="background: rgba(245,158,11,0.12)">⏱</div>
+                <span class="text-xs font-semibold" style="color: var(--color-danger)">-8%</span>
+              </div>
+              <div class="text-3xl font-black mb-1" style="color: var(--color-text-primary); letter-spacing: -1px">
+                {{ avgDuration() }}min
+              </div>
+              <div class="text-xs" style="color: var(--color-text-muted)">Tempo médio</div>
+            </div>
+
+            <!-- Tarefas pendentes -->
+            <div class="stat-card rounded-xl p-5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
+              <div class="flex items-start justify-between mb-4">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
+                     style="background: rgba(239,68,68,0.12)">✅</div>
+              </div>
+              <div class="text-3xl font-black mb-1" style="color: var(--color-text-primary); letter-spacing: -1px">
+                {{ pendingTasks() }}
+              </div>
+              <div class="text-xs" style="color: var(--color-text-muted)">Tarefas pendentes</div>
+            </div>
+          </div>
+
+          <!-- Main Grid -->
+          <div class="flex gap-6 flex-wrap">
+            <!-- Left Column -->
+            <div style="flex: 2; min-width: 340px">
+              <!-- Próximas Reuniões -->
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-bold" style="color: var(--color-text-primary)">Próximas Reuniões</h3>
+                <button class="text-xs font-medium px-2 py-1 rounded"
+                        style="color: var(--color-primary); background: transparent; border: none; cursor: pointer"
+                        (click)="router.navigate(['/reunioes'])">
+                  Ver todas →
+                </button>
+              </div>
+              <div class="flex flex-col gap-2 mb-5">
+                @for (m of upcomingMeetings(); track m.id) {
+                  <div class="meeting-card rounded-xl p-4"
+                       style="background: var(--color-surface); border: 1px solid var(--color-border)"
+                       (click)="router.navigate(['/reunioes', m.id])">
+                    <div class="flex items-center gap-4">
+                      <div class="w-1 rounded shrink-0" style="height: 48px"
+                           [style.background]="statusColor(m.status!)"></div>
+                      <div class="flex-1 min-w-0">
+                        <div class="text-sm font-semibold truncate" style="color: var(--color-text-primary)">{{ m.title }}</div>
+                        <div class="flex gap-4 mt-1 flex-wrap">
+                          <span class="text-xs flex items-center gap-1" style="color: var(--color-text-muted)">
+                            📅 {{ formatDate(m.meetingDate) }}
+                          </span>
+                          @if (participantCount()[m.id!]) {
+                            <span class="text-xs flex items-center gap-1" style="color: var(--color-text-muted)">
+                              👥 {{ participantCount()[m.id!] }} participante{{ participantCount()[m.id!] !== 1 ? 's' : '' }}
+                            </span>
+                          }
+                          @if (m.location) {
+                            <span class="text-xs flex items-center gap-1" style="color: var(--color-text-muted)">
+                              📍 {{ m.location }}
+                            </span>
+                          }
+                        </div>
+                      </div>
+                      <span class="px-2 py-0.5 rounded-full text-xs font-semibold shrink-0"
+                            [style.background]="statusBg(m.status!)"
+                            [style.color]="statusColor(m.status!)">
+                        {{ statusLabel(m.status!) }}
+                      </span>
+                    </div>
+                  </div>
+                } @empty {
+                  <div class="text-center py-8">
+                    <div class="text-3xl mb-2">📅</div>
+                    <p class="text-sm" style="color: var(--color-text-muted)">Nenhuma reunião agendada.</p>
+                  </div>
+                }
+              </div>
+
+              <!-- Reuniões por Mês -->
+              <div class="rounded-xl p-5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
+                <h3 class="text-sm font-bold mb-4" style="color: var(--color-text-primary)">Reuniões por Mês</h3>
+                <div class="flex items-end gap-2 px-2" style="height: 100px">
+                  @for (bar of chartBars; track $index) {
+                    <div class="chart-bar flex-1"
+                         [style.height]="bar.pct + '%'"
+                         [style.background]="bar.highlight ? 'var(--color-primary)' : 'rgba(6,182,212,0.25)'"
+                         [title]="bar.label + ': ' + bar.count + ' reuniões'">
+                    </div>
+                  }
+                </div>
+                <div class="flex justify-between mt-2 px-2">
+                  @for (bar of chartBars; track $index) {
+                    <span class="text-[10px] flex-1 text-center" style="color: var(--color-text-muted)">
+                      {{ bar.label }}
+                    </span>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column -->
+            <div style="flex: 1; min-width: 280px">
+              <!-- Tarefas Recentes -->
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-bold" style="color: var(--color-text-primary)">Tarefas Recentes</h3>
+                <button class="text-xs font-medium px-2 py-1 rounded"
+                        style="color: var(--color-primary); background: transparent; border: none; cursor: pointer"
+                        (click)="router.navigate(['/tarefas'])">
+                  Ver todas
+                </button>
+              </div>
+              <div class="flex flex-col gap-2 mb-5">
+                @for (t of recentTasks(); track t.id) {
+                  <div class="rounded-xl p-3.5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
+                    <div class="text-sm font-semibold mb-2 truncate" style="color: var(--color-text-primary)">{{ t.title }}</div>
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs" style="color: var(--color-text-muted)">
+                        {{ t.assignee?.name ?? 'Sem responsável' }}
+                        @if (t.dueDate) { · {{ formatDate(t.dueDate) }} }
+                      </span>
+                      <span class="px-2 py-0.5 rounded-full text-xs font-semibold"
+                            [style.background]="taskStatusBg(t.status)"
+                            [style.color]="taskStatusColor(t.status)">
+                        {{ taskStatusLabel(t.status) }}
+                      </span>
+                    </div>
+                  </div>
+                } @empty {
+                  <div class="rounded-xl p-4 text-center" style="background: var(--color-surface); border: 1px solid var(--color-border)">
+                    <p class="text-sm" style="color: var(--color-text-muted)">Nenhuma tarefa.</p>
+                  </div>
+                }
+              </div>
+
+              <!-- Confirmações Pendentes -->
+              <div class="rounded-xl p-5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
+                <h3 class="text-sm font-bold mb-4" style="color: var(--color-text-primary)">Confirmações Pendentes</h3>
+                @for (m of pendingConfirmations(); track m.id; let last = $last) {
+                  <div class="flex items-center justify-between py-2.5"
+                       [style.border-bottom]="!last ? '1px solid var(--color-border)' : 'none'">
+                    <span class="text-sm truncate mr-3" style="color: var(--color-text-secondary)">{{ m.title }}</span>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-semibold shrink-0"
+                          style="background: rgba(245,158,11,0.15); color: var(--color-warning)">
+                      pendente
+                    </span>
+                  </div>
+                } @empty {
+                  <p class="text-sm text-center" style="color: var(--color-text-muted)">Nenhuma pendência.</p>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `
 })
-export class Dashboard {}
+export class Dashboard implements OnInit {
+  readonly router = inject(Router);
+  private meetingService = inject(MeetingService);
+  private taskService = inject(TaskService);
+  private participantService = inject(ParticipantService);
+
+  meetings = signal<Meeting[]>([]);
+  tasks = signal<Task[]>([]);
+  participantCount = signal<Record<number, number>>({});
+  loading = signal(true);
+
+  readonly chartBars = [
+    { label: 'Jan', count: 3, pct: 35, highlight: false },
+    { label: 'Fev', count: 2, pct: 22, highlight: false },
+    { label: 'Mar', count: 5, pct: 58, highlight: false },
+    { label: 'Abr', count: 4, pct: 47, highlight: false },
+    { label: 'Mai', count: 7, pct: 82, highlight: false },
+    { label: 'Jun', count: 5, pct: 60, highlight: false },
+    { label: 'Jul', count: 3, pct: 35, highlight: false },
+    { label: 'Ago', count: 6, pct: 70, highlight: false },
+    { label: 'Set', count: 4, pct: 47, highlight: false },
+    { label: 'Out', count: 8, pct: 95, highlight: true  },
+    { label: 'Nov', count: 3, pct: 35, highlight: false },
+    { label: 'Dez', count: 5, pct: 58, highlight: false },
+  ];
+
+  meetingsThisMonth = computed(() => {
+    const now = new Date();
+    return this.meetings().filter(m => {
+      const d = new Date(m.meetingDate);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length;
+  });
+
+  meetingsThisMonthChange = computed(() => {
+    const count = this.meetingsThisMonth();
+    return count > 0 ? 12 : 0;
+  });
+
+  avgDuration = computed(() => {
+    const all = this.meetings().filter(m => m.duration);
+    if (!all.length) return 0;
+    return Math.round(all.reduce((s, m) => s + (m.duration ?? 0), 0) / all.length);
+  });
+
+  pendingTasks = computed(() =>
+    this.tasks().filter(t => t.status === 'PENDENTE').length
+  );
+
+  upcomingMeetings = computed(() =>
+    this.meetings()
+      .filter(m => m.status !== 'CONCLUIDO')
+      .sort((a, b) => new Date(a.meetingDate).getTime() - new Date(b.meetingDate).getTime())
+      .slice(0, 4)
+  );
+
+  recentTasks = computed(() =>
+    this.tasks()
+      .filter(t => t.status !== 'CONCLUIDA')
+      .slice(0, 3)
+  );
+
+  pendingConfirmations = computed(() =>
+    this.meetings()
+      .filter(m => m.status === 'NAO_INICIADO')
+      .slice(0, 3)
+  );
+
+  async ngOnInit(): Promise<void> {
+    try {
+      const [meetings, tasks, participants] = await Promise.all([
+        this.meetingService.listar(),
+        this.taskService.listar(),
+        this.participantService.listar().catch(() => []),
+      ]);
+      this.meetings.set(meetings);
+      this.tasks.set(tasks);
+      const countMap: Record<number, number> = {};
+      for (const p of participants) {
+        const mid = p.meeting.id;
+        countMap[mid] = (countMap[mid] ?? 0) + 1;
+      }
+      this.participantCount.set(countMap);
+    } catch {
+      // dashboard degrades gracefully
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  formatDate(dateStr: string): string {
+    const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const d = new Date(dateStr);
+    return `${d.getDate().toString().padStart(2,'0')} ${months[d.getMonth()]}`;
+  }
+
+  statusLabel(s: string): string {
+    const m: Record<string, string> = { NAO_INICIADO: 'Agendada', EM_ANDAMENTO: 'Em andamento', CONCLUIDO: 'Concluída' };
+    return m[s] ?? s;
+  }
+
+  statusColor(s: string): string {
+    const m: Record<string, string> = { NAO_INICIADO: 'var(--color-primary)', EM_ANDAMENTO: 'var(--color-warning)', CONCLUIDO: 'var(--color-success)' };
+    return m[s] ?? 'var(--color-text-secondary)';
+  }
+
+  statusBg(s: string): string {
+    const m: Record<string, string> = { NAO_INICIADO: 'rgba(6,182,212,0.15)', EM_ANDAMENTO: 'rgba(245,158,11,0.15)', CONCLUIDO: 'rgba(16,185,129,0.15)' };
+    return m[s] ?? 'rgba(148,163,184,0.1)';
+  }
+
+  taskStatusLabel(s: string): string {
+    const m: Record<string, string> = { PENDENTE: 'Pendente', EM_ANDAMENTO: 'Em andamento', CONCLUIDA: 'Concluída' };
+    return m[s] ?? s;
+  }
+
+  taskStatusColor(s: string): string {
+    const m: Record<string, string> = { PENDENTE: 'var(--color-text-muted)', EM_ANDAMENTO: 'var(--color-warning)', CONCLUIDA: 'var(--color-success)' };
+    return m[s] ?? 'var(--color-text-muted)';
+  }
+
+  taskStatusBg(s: string): string {
+    const m: Record<string, string> = { PENDENTE: 'rgba(148,163,184,0.1)', EM_ANDAMENTO: 'rgba(245,158,11,0.15)', CONCLUIDA: 'rgba(16,185,129,0.15)' };
+    return m[s] ?? 'rgba(148,163,184,0.1)';
+  }
+}

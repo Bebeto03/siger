@@ -46,6 +46,10 @@ export const routes: Routes = [
         loadChildren: () => import('./pages/atas/atas.routes').then(m => m.ATAS_ROUTES),
       },
       {
+        path: 'relatorios',
+        loadChildren: () => import('./pages/relatorios/relatorios.routes').then(m => m.RELATORIOS_ROUTES),
+      },
+      {
         path: 'usuarios',
         loadChildren: () => import('./pages/usuarios/usuarios.routes').then(m => m.USUARIOS_ROUTES),
         canActivate: [roleGuard(['ROLE_ADMIN'])],

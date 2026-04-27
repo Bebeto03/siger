@@ -17,7 +17,8 @@
       "Bash(curl -s http://localhost:4200/styles.css)",
       "Bash(taskkill /F /IM node.exe)",
       "Bash(taskkill //F //IM node.exe)",
-      "Bash(xargs cat *)"
+      "Bash(xargs cat *)",
+      "Bash(npx tsc *)"
     ]
   }
 }
