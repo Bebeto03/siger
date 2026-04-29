@@ -195,30 +195,30 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
 
   // ── Users ───────────────────────────────────────────────────────────────────
 
-  if (method === 'GET' && url === '/api/user/findAll')
+  if (method === 'GET' && url === '/user/findAll')
     return respond([...mockUsers]);
 
-  if (method === 'GET' && url.match(/^\/api\/user\/\d+$/)) {
+  if (method === 'GET' && url.match(/^\/user\/\d+$/)) {
     const id   = Number(url.split('/').pop());
     const user = mockUsers.find(u => u.id === id);
     return user ? respond(user) : respond({ message: 'Não encontrado' }, 404);
   }
 
-  if (method === 'POST' && url === '/api/user') {
+  if (method === 'POST' && url === '/user') {
     const body = req.body as any;
     const novo = { ...body, id: nextUserId++, status: 'ATIVO' };
     mockUsers.push(novo);
     return respond(novo, 201);
   }
 
-  if (method === 'PUT' && url.match(/^\/api\/user\/\d+$/)) {
+  if (method === 'PUT' && url.match(/^\/user\/\d+$/)) {
     const id  = Number(url.split('/').pop());
     const idx = mockUsers.findIndex(u => u.id === id);
     if (idx !== -1) mockUsers[idx] = { ...mockUsers[idx], ...(req.body as any), id };
     return respond(mockUsers[idx] ?? req.body);
   }
 
-  if (method === 'DELETE' && url.match(/^\/api\/user\/\d+$/)) {
+  if (method === 'DELETE' && url.match(/^\/user\/\d+$/)) {
     const id = Number(url.split('/').pop());
     mockUsers = mockUsers.filter(u => u.id !== id);
     return respond(null, 204);
@@ -226,30 +226,30 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
 
   // ── Meetings ────────────────────────────────────────────────────────────────
 
-  if (method === 'GET' && url === '/api/meeting/findAll')
+  if (method === 'GET' && url === '/meeting/findAll')
     return respond([...mockMeetings]);
 
-  if (method === 'GET' && url.match(/^\/api\/meeting\/\d+$/)) {
+  if (method === 'GET' && url.match(/^\/meeting\/\d+$/)) {
     const id      = Number(url.split('/').pop());
     const meeting = mockMeetings.find(m => m.id === id);
     return meeting ? respond(meeting) : respond({ message: 'Não encontrado' }, 404);
   }
 
-  if (method === 'POST' && url === '/api/meeting') {
+  if (method === 'POST' && url === '/meeting') {
     const body = req.body as any;
     const novo = { ...body, id: nextMeetingId++, status: body.status ?? 'NAO_INICIADO' };
     mockMeetings.push(novo);
     return respond(novo, 201);
   }
 
-  if (method === 'PUT' && url.match(/^\/api\/meeting\/\d+$/)) {
+  if (method === 'PUT' && url.match(/^\/meeting\/\d+$/)) {
     const id  = Number(url.split('/').pop());
     const idx = mockMeetings.findIndex(m => m.id === id);
     if (idx !== -1) mockMeetings[idx] = { ...mockMeetings[idx], ...(req.body as any), id };
     return respond(mockMeetings[idx] ?? req.body);
   }
 
-  if (method === 'DELETE' && url.match(/^\/api\/meeting\/\d+$/)) {
+  if (method === 'DELETE' && url.match(/^\/meeting\/\d+$/)) {
     const id = Number(url.split('/').pop());
     mockMeetings = mockMeetings.filter(m => m.id !== id);
     return respond(null, 204);
@@ -257,30 +257,30 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
 
   // ── Participants ─────────────────────────────────────────────────────────────
 
-  if (method === 'GET' && url === '/api/participant/findAll')
+  if (method === 'GET' && url === '/participant/findAll')
     return respond([...mockParticipants]);
 
-  if (method === 'GET' && url.match(/^\/api\/participant\/\d+$/)) {
+  if (method === 'GET' && url.match(/^\/participant\/\d+$/)) {
     const id = Number(url.split('/').pop());
     const p  = mockParticipants.find(x => x.id === id);
     return p ? respond(p) : respond({ message: 'Não encontrado' }, 404);
   }
 
-  if (method === 'POST' && url === '/api/participant') {
+  if (method === 'POST' && url === '/participant') {
     const body = req.body as any;
     const novo = { ...body, id: nextParticipantId++ };
     mockParticipants.push(novo);
     return respond(novo, 201);
   }
 
-  if (method === 'PUT' && url.match(/^\/api\/participant\/\d+$/)) {
+  if (method === 'PUT' && url.match(/^\/participant\/\d+$/)) {
     const id  = Number(url.split('/').pop());
     const idx = mockParticipants.findIndex(x => x.id === id);
     if (idx !== -1) mockParticipants[idx] = { ...mockParticipants[idx], ...(req.body as any), id };
     return respond(mockParticipants[idx] ?? req.body);
   }
 
-  if (method === 'DELETE' && url.match(/^\/api\/participant\/\d+$/)) {
+  if (method === 'DELETE' && url.match(/^\/participant\/\d+$/)) {
     const id = Number(url.split('/').pop());
     mockParticipants = mockParticipants.filter(x => x.id !== id);
     return respond(null, 204);
@@ -288,30 +288,30 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
 
   // ── Meeting Minutes ──────────────────────────────────────────────────────────
 
-  if (method === 'GET' && url === '/api/meeting/minutes/findAll')
+  if (method === 'GET' && url === '/meeting/minutes/findAll')
     return respond([...mockMinutes]);
 
-  if (method === 'GET' && url.match(/^\/api\/meeting\/minutes\/\d+$/)) {
+  if (method === 'GET' && url.match(/^\/meeting\/minutes\/\d+$/)) {
     const id  = Number(url.split('/').pop());
     const min = mockMinutes.find(x => x.id === id);
     return min ? respond(min) : respond({ message: 'Não encontrado' }, 404);
   }
 
-  if (method === 'POST' && url === '/api/meeting/minutes') {
+  if (method === 'POST' && url === '/meeting/minutes') {
     const body = req.body as any;
     const novo = { ...body, id: nextMinutesId++ };
     mockMinutes.push(novo);
     return respond(novo, 201);
   }
 
-  if (method === 'PUT' && url.match(/^\/api\/meeting\/minutes\/\d+$/)) {
+  if (method === 'PUT' && url.match(/^\/meeting\/minutes\/\d+$/)) {
     const id  = Number(url.split('/').pop());
     const idx = mockMinutes.findIndex(x => x.id === id);
     if (idx !== -1) mockMinutes[idx] = { ...mockMinutes[idx], ...(req.body as any), id };
     return respond(mockMinutes[idx] ?? req.body);
   }
 
-  if (method === 'DELETE' && url.match(/^\/api\/meeting\/minutes\/\d+$/)) {
+  if (method === 'DELETE' && url.match(/^\/meeting\/minutes\/\d+$/)) {
     const id = Number(url.split('/').pop());
     mockMinutes = mockMinutes.filter(x => x.id !== id);
     return respond(null, 204);
@@ -319,30 +319,30 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
 
   // ── Topics ───────────────────────────────────────────────────────────────────
 
-  if (method === 'GET' && url === '/api/topic/findAll')
+  if (method === 'GET' && url === '/topic/findAll')
     return respond([...mockTopics]);
 
-  if (method === 'GET' && url.match(/^\/api\/topic\/\d+$/)) {
+  if (method === 'GET' && url.match(/^\/topic\/\d+$/)) {
     const id = Number(url.split('/').pop());
     const t  = mockTopics.find(x => x.id === id);
     return t ? respond(t) : respond({ message: 'Não encontrado' }, 404);
   }
 
-  if (method === 'POST' && url === '/api/topic') {
+  if (method === 'POST' && url === '/topic') {
     const body = req.body as any;
     const novo = { ...body, id: nextTopicId++ };
     mockTopics.push(novo);
     return respond(novo, 201);
   }
 
-  if (method === 'PUT' && url.match(/^\/api\/topic\/\d+$/)) {
+  if (method === 'PUT' && url.match(/^\/topic\/\d+$/)) {
     const id  = Number(url.split('/').pop());
     const idx = mockTopics.findIndex(x => x.id === id);
     if (idx !== -1) mockTopics[idx] = { ...mockTopics[idx], ...(req.body as any), id };
     return respond(mockTopics[idx] ?? req.body);
   }
 
-  if (method === 'DELETE' && url.match(/^\/api\/topic\/\d+$/)) {
+  if (method === 'DELETE' && url.match(/^\/topic\/\d+$/)) {
     const id = Number(url.split('/').pop());
     mockTopics = mockTopics.filter(x => x.id !== id);
     return respond(null, 204);
@@ -350,30 +350,30 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
 
   // ── Tasks ────────────────────────────────────────────────────────────────────
 
-  if (method === 'GET' && url === '/api/task/findAll')
+  if (method === 'GET' && url === '/task/findAll')
     return respond([...mockTasks]);
 
-  if (method === 'GET' && url.match(/^\/api\/task\/\d+$/)) {
+  if (method === 'GET' && url.match(/^\/task\/\d+$/)) {
     const id = Number(url.split('/').pop());
     const t  = mockTasks.find(x => x.id === id);
     return t ? respond(t) : respond({ message: 'Não encontrado' }, 404);
   }
 
-  if (method === 'POST' && url === '/api/task') {
+  if (method === 'POST' && url === '/task') {
     const body = req.body as any;
     const novo = { ...body, id: nextTaskId++, createdAt: new Date().toISOString() };
     mockTasks.push(novo);
     return respond(novo, 201);
   }
 
-  if (method === 'PUT' && url.match(/^\/api\/task\/\d+$/)) {
+  if (method === 'PUT' && url.match(/^\/task\/\d+$/)) {
     const id  = Number(url.split('/').pop());
     const idx = mockTasks.findIndex(x => x.id === id);
     if (idx !== -1) mockTasks[idx] = { ...mockTasks[idx], ...(req.body as any), id };
     return respond(mockTasks[idx] ?? req.body);
   }
 
-  if (method === 'DELETE' && url.match(/^\/api\/task\/\d+$/)) {
+  if (method === 'DELETE' && url.match(/^\/task\/\d+$/)) {
     const id = Number(url.split('/').pop());
     mockTasks = mockTasks.filter(x => x.id !== id);
     return respond(null, 204);
@@ -381,7 +381,7 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
 
   // ── Logs ─────────────────────────────────────────────────────────────────────
 
-  if (method === 'POST' && url === '/api/log')
+  if (method === 'POST' && url === '/log')
     return respond(null, 201);
 
   return next(req);
