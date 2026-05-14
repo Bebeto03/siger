@@ -73,8 +73,9 @@ export class Configuracoes implements OnInit {
 
   roleLabel(): string {
     const authorities = this.auth.currentUser()?.authorities ?? [];
-    if (authorities.includes('ROLE_ADMIN')) return 'Administrador';
-    if (authorities.includes('ROLE_ORGANIZADOR')) return 'Organizador';
+    if (authorities.includes('ROLE_ADMIN'))        return 'Administrador';
+    if (authorities.includes('ROLE_ORGANIZADOR'))  return 'Organizador';
+    if (authorities.includes('ROLE_PARTICIPANTE')) return 'Participante';
     return 'Participante';
   }
 

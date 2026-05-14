@@ -48,6 +48,7 @@ export class AppSidebar {
     const authorities = this.auth.currentUser()?.authorities ?? [];
     if (authorities.some(a => a.includes('ADMIN')))        return 'Administrador';
     if (authorities.some(a => a.includes('ORGANIZADOR')))  return 'Organizador';
+    if (authorities.some(a => a.includes('PARTICIPANTE'))) return 'Participante';
     return 'Participante';
   }
 
