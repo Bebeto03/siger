@@ -64,6 +64,8 @@ export class ReuniaoList implements OnInit {
     ];
   });
 
+  podecriarReuniao = computed(() => this.auth.temQualquerPermissao(['ROLE_ADMIN', 'ROLE_ORGANIZADOR']));
+
   calendarLabel = computed(() => `${this.monthNames[this.calendarMonth()]} ${this.calendarYear()}`);
 
   calendarCells = computed(() => {

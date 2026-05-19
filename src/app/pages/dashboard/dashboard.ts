@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { MeetingService } from '../../core/services/meeting.service';
 import { TaskService } from '../../core/services/task.service';
 import { ParticipantService } from '../../core/services/participant.service';
+import { AuthService } from '../../core/services/auth.service';
 import { Meeting } from '../../core/models/meeting.model';
 import { Task } from '../../core/models/task.model';
 
@@ -25,11 +26,14 @@ export class Dashboard implements OnInit {
   private meetingService = inject(MeetingService);
   private taskService = inject(TaskService);
   private participantService = inject(ParticipantService);
+  private auth = inject(AuthService);
 
   meetings = signal<Meeting[]>([]);
   tasks = signal<Task[]>([]);
   participantCount = signal<Record<number, number>>({});
   loading = signal(true);
+
+  podecriarReuniao = computed(() => this.auth.temQualquerPermissao(['ROLE_ADMIN', 'ROLE_ORGANIZADOR']));
 
   readonly chartBars = [
     { label: 'Jan', count: 3, pct: 35, highlight: false },

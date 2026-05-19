@@ -6,11 +6,13 @@
         <h1 class="text-xl font-bold" style="color: var(--color-text-primary)">Dashboard</h1>
         <p class="text-sm mt-0.5" style="color: var(--color-text-muted)">Visão geral das suas reuniões e tarefas</p>
     </div>
+    @if (podecriarReuniao()) {
     <button class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white"
             style="background: var(--color-primary); border: none; cursor: pointer"
             (click)="router.navigate(['/reunioes/nova'])">
         + Nova Reunião
     </button>
+    }
     </div>
 
     @if (loading()) {
