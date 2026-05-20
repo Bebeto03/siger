@@ -1,0 +1,213 @@
+<div class="flex flex-col gap-6 p-6 max-w-2xl">
+    <app-toast />
+
+    <!-- Header -->
+    <div>
+    <h1 class="text-2xl font-bold" style="color: var(--color-text-primary)">Configurações</h1>
+    <p class="text-sm mt-1" style="color: var(--color-text-muted)">Gerencie seu perfil e preferências</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-1 p-1 rounded-xl w-fit"
+        style="background: var(--color-surface); border: 1px solid var(--color-border)">
+    <button (click)="activeTab.set('perfil')"
+        class="px-5 py-2 rounded-lg text-sm font-medium transition-all"
+        [style]="activeTab() === 'perfil'
+        ? 'background: var(--color-primary); color: #000'
+        : 'background: transparent; color: var(--color-text-secondary)'">
+        👤 Meu Perfil
+    </button>
+    <button (click)="activeTab.set('seguranca')"
+        class="px-5 py-2 rounded-lg text-sm font-medium transition-all"
+        [style]="activeTab() === 'seguranca'
+        ? 'background: var(--color-primary); color: #000'
+        : 'background: transparent; color: var(--color-text-secondary)'">
+        🔒 Segurança
+    </button>
+    <button (click)="activeTab.set('notificacoes')"
+        class="px-5 py-2 rounded-lg text-sm font-medium transition-all"
+        [style]="activeTab() === 'notificacoes'
+        ? 'background: var(--color-primary); color: #000'
+        : 'background: transparent; color: var(--color-text-secondary)'">
+        🔔 Notificações
+    </button>
+    </div>
+
+    <!-- Tab: Perfil -->
+    @if (activeTab() === 'perfil') {
+    <div class="rounded-xl p-6"
+            style="background: var(--color-surface); border: 1px solid var(--color-border)">
+
+        <!-- Avatar -->
+        <div class="flex items-center gap-4 mb-6 pb-6 border-b" style="border-color: var(--color-border)">
+        <div class="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold text-white"
+                style="background: linear-gradient(135deg, #6366F1, #8B5CF6)">
+            {{ avatarInitials() }}
+        </div>
+        <div>
+            <div class="font-semibold text-lg" style="color: var(--color-text-primary)">
+            {{ currentUser()?.name || auth.getNomeUsuario() }}
+            </div>
+            <div class="text-sm mt-0.5" style="color: var(--color-text-muted)">
+            {{ roleLabel() }}
+            </div>
+        </div>
+        </div>
+
+        @if (loadingProfile()) {
+        <div class="flex items-center justify-center py-8 gap-3">
+            <div class="w-5 h-5 rounded-full border-2 border-t-transparent animate-spin"
+                style="border-color: var(--color-primary); border-top-color: transparent"></div>
+            <span class="text-sm" style="color: var(--color-text-muted)">Carregando perfil...</span>
+        </div>
+        } @else {
+        <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" class="flex flex-col gap-4">
+
+            <!-- Nome -->
+            <div>
+            <label class="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
+                    style="color: var(--color-text-muted)">Nome Completo *</label>
+            <input formControlName="name" type="text" placeholder="Seu nome"
+                class="w-full px-3 py-2.5 rounded-lg text-sm"
+                [style]="inputStyle(profileHasError('name'))" />
+            @if (profileHasError('name')) {
+                <span class="text-xs mt-1 block" style="color: var(--color-danger)">Nome é obrigatório.</span>
+            }
+            </div>
+
+            <!-- Email (readonly) -->
+            <div>
+            <label class="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
+                    style="color: var(--color-text-muted)">E-mail</label>
+            <input formControlName="email" type="email" readonly
+                class="w-full px-3 py-2.5 rounded-lg text-sm"
+                style="background: var(--color-surface-light); border: 1px solid var(--color-border); color: var(--color-text-muted); cursor: not-allowed" />
+            <span class="text-xs mt-1 block" style="color: var(--color-text-muted)">
+                O e-mail não pode ser alterado.
+            </span>
+            </div>
+
+            <!-- CPF + Telefone -->
+            <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
+                        style="color: var(--color-text-muted)">CPF</label>
+                <input formControlName="cpf" type="text" maxlength="11" readonly
+                class="w-full px-3 py-2.5 rounded-lg text-sm"
+                style="background: var(--color-surface-light); border: 1px solid var(--color-border); color: var(--color-text-muted); cursor: not-allowed" />
+            </div>
+            <div>
+                <label class="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
+                        style="color: var(--color-text-muted)">Telefone</label>
+                <input formControlName="phone" type="text" placeholder="(11) 99999-9999"
+                class="w-full px-3 py-2.5 rounded-lg text-sm"
+                [style]="inputStyle(false)" />
+            </div>
+            </div>
+
+            @if (!currentUser()) {
+            <div class="rounded-lg px-4 py-3 text-sm"
+                    style="background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); color: var(--color-warning)">
+                ⚠️ Sem permissão para carregar dados do perfil. Apenas administradores podem editar o perfil completo.
+            </div>
+            }
+
+            <div class="pt-2 flex justify-end">
+            <button type="submit" [disabled]="savingProfile() || !currentUser()"
+                class="px-5 py-2.5 rounded-lg text-sm font-semibold transition-all"
+                [style]="(savingProfile() || !currentUser())
+                ? 'background: var(--color-primary-dark); color: #000; opacity: 0.5; cursor: not-allowed'
+                : 'background: var(--color-primary); color: #000'">
+                {{ savingProfile() ? 'Salvando...' : 'Salvar Perfil' }}
+            </button>
+            </div>
+        </form>
+        }
+    </div>
+    }
+
+    <!-- Tab: Notificações -->
+    @if (activeTab() === 'notificacoes') {
+    <div class="rounded-xl p-6"
+            style="background: var(--color-surface); border: 1px solid var(--color-border)">
+        <h3 class="font-semibold mb-1" style="color: var(--color-text-primary)">Preferências de Notificação</h3>
+        <p class="text-sm mb-5" style="color: var(--color-text-muted)">
+        Escolha quais notificações deseja receber.
+        </p>
+
+        <div class="flex flex-col gap-1">
+        @for (item of notifItems; track item.key) {
+            <div class="flex items-center justify-between py-3.5 border-b last:border-0"
+                style="border-color: var(--color-border)">
+            <div>
+                <div class="text-sm font-medium" style="color: var(--color-text-primary)">{{ item.label }}</div>
+                <div class="text-xs mt-0.5" style="color: var(--color-text-muted)">{{ item.description }}</div>
+            </div>
+            <button
+                (click)="toggleNotif(item.key)"
+                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ml-4"
+                [style]="notifValues[item.key]
+                ? 'background: var(--color-primary)'
+                : 'background: var(--color-border)'">
+                <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm"
+                    [style]="notifValues[item.key] ? 'transform: translateX(22px)' : 'transform: translateX(3px)'">
+                </span>
+            </button>
+            </div>
+        }
+        </div>
+
+        <div class="mt-5 flex justify-end">
+        <button (click)="saveNotifications()" [disabled]="savingNotif()"
+            class="px-5 py-2.5 rounded-lg text-sm font-semibold transition-all"
+            [style]="savingNotif()
+            ? 'background: var(--color-primary-dark); color: #000; opacity: 0.5; cursor: not-allowed'
+            : 'background: var(--color-primary); color: #000'">
+            {{ savingNotif() ? 'Salvando...' : 'Salvar Preferências' }}
+        </button>
+        </div>
+    </div>
+    }
+
+    <!-- Tab: Segurança -->
+    @if (activeTab() === 'seguranca') {
+    <div class="rounded-xl p-6"
+            style="background: var(--color-surface); border: 1px solid var(--color-border)">
+        <h3 class="font-semibold mb-1" style="color: var(--color-text-primary)">Alterar Senha</h3>
+        <p class="text-sm mb-4" style="color: var(--color-text-muted)">
+        Para alterar sua senha, utilizamos o fluxo seguro de redefinição por e-mail.
+        </p>
+
+        <div class="rounded-xl p-5"
+            style="background: var(--color-surface-light); border: 1px solid var(--color-border)">
+        <div class="flex items-start gap-4">
+            <div class="text-2xl shrink-0">🔐</div>
+            <div class="flex-1">
+            <div class="font-medium mb-1" style="color: var(--color-text-primary)">
+                Redefinição de senha por e-mail
+            </div>
+            <p class="text-sm mb-4" style="color: var(--color-text-muted)">
+                Enviaremos um link de redefinição para
+                <strong style="color: var(--color-text-secondary)">{{ auth.getNomeUsuario() }}</strong>.
+                Verifique sua caixa de entrada.
+            </p>
+            <button (click)="requestPasswordReset()" [disabled]="sendingReset()"
+                class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                [style]="sendingReset()
+                ? 'background: var(--color-primary-dark); color: #000; opacity: 0.7; cursor: not-allowed'
+                : 'background: var(--color-primary); color: #000'">
+                {{ sendingReset() ? 'Enviando...' : '📧 Enviar link de redefinição' }}
+            </button>
+            </div>
+        </div>
+        </div>
+
+        @if (resetSent()) {
+        <div class="mt-4 rounded-lg px-4 py-3 text-sm flex items-center gap-2"
+                style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: var(--color-success)">
+            ✓ E-mail de redefinição enviado! Verifique sua caixa de entrada.
+        </div>
+        }
+    </div>
+    }
+</div>

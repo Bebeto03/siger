@@ -1,11 +1,24 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { ApplicationConfig, LOCALE_ID, provideZoneChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { DatePipe, registerLocaleData } from '@angular/common';
+import localePt from '@angular/common/locales/pt';
 
 import { routes } from './app.routes';
+import { tokenInterceptor } from './core/interceptors/token.interceptor';
+import { errorInterceptor } from './core/interceptors/error.interceptor';
+import { mockInterceptor } from './core/interceptors/mock.interceptor';
+import { loadingInterceptor } from './core/interceptors/loading.interceptor';
+
+registerLocaleData(localePt, 'pt-BR');
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideBrowserGlobalErrorListeners(),
-    provideRouter(routes)
-  ]
+    provideZoneChangeDetection({ eventCoalescing: true }),
+    provideRouter(routes),
+    provideHttpClient(withInterceptors([mockInterceptor, tokenInterceptor, loadingInterceptor, errorInterceptor])),
+
+    DatePipe,
+    { provide: LOCALE_ID, useValue: 'pt-BR' },
+  ],
 };

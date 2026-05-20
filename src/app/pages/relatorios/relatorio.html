@@ -1,0 +1,169 @@
+<div class="flex flex-col min-h-full">
+    <app-toast />
+
+    <!-- Top Bar -->
+    <div class="flex items-center justify-between px-7 py-5 border-b"
+        style="background: var(--color-surface); border-color: var(--color-border)">
+    <div>
+        <h1 class="text-xl font-bold" style="color: var(--color-text-primary)">Relatórios</h1>
+        <p class="text-sm mt-0.5" style="color: var(--color-text-muted)">Indicadores e análises do sistema</p>
+    </div>
+    <button class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold"
+            style="background: var(--color-surface-light); color: var(--color-text-primary); border: 1px solid var(--color-border); cursor: pointer"
+            (click)="notify.info('Exportação de PDF — em breve!')">
+        ⬇ Exportar PDF
+    </button>
+    </div>
+
+    @if (loading()) {
+    <div class="flex items-center justify-center py-20 gap-3">
+        <div class="spinner w-5 h-5 rounded-full border-2"
+            style="border-color: var(--color-primary); border-top-color: transparent"></div>
+        <span class="text-sm" style="color: var(--color-text-muted)">Carregando relatórios...</span>
+    </div>
+    } @else {
+    <div class="p-7">
+        <!-- Stat Cards -->
+        <div class="grid gap-4 mb-6" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr))">
+        <div class="rounded-xl p-5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-4"
+                style="background: rgba(6,182,212,0.12)">📅</div>
+            <div class="text-3xl font-black mb-1" style="color: var(--color-text-primary); letter-spacing: -1px">
+            {{ totalMeetings() }}
+            </div>
+            <div class="text-xs" style="color: var(--color-text-muted)">Total de reuniões</div>
+        </div>
+
+        <div class="rounded-xl p-5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-4"
+                style="background: rgba(16,185,129,0.12)">👥</div>
+            <div class="text-3xl font-black mb-1" style="color: var(--color-text-primary); letter-spacing: -1px">87%</div>
+            <div class="text-xs" style="color: var(--color-text-muted)">Taxa média de presença</div>
+        </div>
+
+        <div class="rounded-xl p-5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-4"
+                style="background: rgba(245,158,11,0.12)">⏱</div>
+            <div class="text-3xl font-black mb-1" style="color: var(--color-text-primary); letter-spacing: -1px">
+            {{ avgDuration() }} min
+            </div>
+            <div class="text-xs" style="color: var(--color-text-muted)">Tempo médio</div>
+        </div>
+
+        <div class="rounded-xl p-5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-4"
+                style="background: rgba(139,92,246,0.12)">📈</div>
+            <div class="text-3xl font-black mb-1" style="color: var(--color-text-primary); letter-spacing: -1px">92%</div>
+            <div class="text-xs" style="color: var(--color-text-muted)">Eficiência geral</div>
+        </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="flex gap-5 mb-5 flex-wrap">
+        <!-- Attendance Bar Chart -->
+        <div class="rounded-xl p-5" style="flex: 1; min-width: 300px; background: var(--color-surface); border: 1px solid var(--color-border)">
+            <h3 class="text-sm font-bold mb-5" style="color: var(--color-text-primary)">
+            Taxa de Comparecimento (últimos 6 meses)
+            </h3>
+            <div class="flex items-end gap-3 px-2" style="height: 140px">
+            @for (bar of attendanceBars; track bar.month) {
+                <div class="flex-1 flex flex-col items-center gap-1">
+                <span class="text-xs font-semibold" style="color: var(--color-primary)">{{ bar.pct }}%</span>
+                <div class="chart-bar w-full"
+                        [style.height]="(bar.pct * 1.1) + 'px'"
+                        style="background: linear-gradient(180deg, var(--color-primary), #0891B2)">
+                </div>
+                </div>
+            }
+            </div>
+            <div class="flex justify-around mt-2">
+            @for (bar of attendanceBars; track bar.month) {
+                <span class="text-xs" style="color: var(--color-text-muted)">{{ bar.month }}</span>
+            }
+            </div>
+        </div>
+
+        <!-- Status Donut -->
+        <div class="rounded-xl p-5" style="flex: 1; min-width: 300px; background: var(--color-surface); border: 1px solid var(--color-border)">
+            <h3 class="text-sm font-bold mb-5" style="color: var(--color-text-primary)">Distribuição de Status</h3>
+            <div class="flex items-center justify-center gap-8">
+            <!-- SVG Donut -->
+            <div class="relative shrink-0" style="width: 120px; height: 120px">
+                <svg width="120" height="120" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="48" fill="none"
+                        style="stroke: var(--color-surface-light)" stroke-width="16"/>
+                <!-- Concluído -->
+                <circle cx="60" cy="60" r="48" fill="none"
+                        stroke="#10B981" stroke-width="16"
+                        [attr.stroke-dasharray]="(concluido() * 301.6) + ' 301.6'"
+                        stroke-dashoffset="0"
+                        transform="rotate(-90 60 60)" stroke-linecap="round"/>
+                <!-- Agendado -->
+                <circle cx="60" cy="60" r="48" fill="none"
+                        stroke="#06B6D4" stroke-width="16"
+                        [attr.stroke-dasharray]="(agendado() * 301.6) + ' 301.6'"
+                        [attr.stroke-dashoffset]="-(concluido() * 301.6)"
+                        transform="rotate(-90 60 60)" stroke-linecap="round"/>
+                <!-- Em andamento -->
+                <circle cx="60" cy="60" r="48" fill="none"
+                        stroke="#F59E0B" stroke-width="16"
+                        [attr.stroke-dasharray]="(emAndamento() * 301.6) + ' 301.6'"
+                        [attr.stroke-dashoffset]="-(concluido() + agendado()) * 301.6"
+                        transform="rotate(-90 60 60)" stroke-linecap="round"/>
+                </svg>
+                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span class="text-lg font-black" style="color: var(--color-text-primary)">{{ totalMeetings() }}</span>
+                <span class="text-[9px]" style="color: var(--color-text-muted)">total</span>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="flex flex-col gap-2.5">
+                @for (item of statusDistribution(); track item.label) {
+                <div class="flex items-center gap-2">
+                    <div class="w-2.5 h-2.5 rounded-sm shrink-0" [style.background]="item.color"></div>
+                    <span class="text-xs w-24" style="color: var(--color-text-secondary)">{{ item.label }}</span>
+                    <span class="text-xs font-bold" style="color: var(--color-text-primary)">{{ item.count }}</span>
+                </div>
+                }
+            </div>
+            </div>
+        </div>
+        </div>
+
+        <!-- Heatmap -->
+        <div class="rounded-xl p-5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
+        <h3 class="text-sm font-bold mb-4" style="color: var(--color-text-primary)">Mapa de Calor — Melhor Horário</h3>
+        <div style="overflow-x: auto">
+            <div style="display: grid; grid-template-columns: 44px repeat(10, 1fr); gap: 3px; min-width: 500px">
+            <!-- Header row -->
+            <div></div>
+            @for (h of hours; track h) {
+                <div class="text-center text-[10px] pb-1" style="color: var(--color-text-muted)">{{ h }}</div>
+            }
+            <!-- Data rows -->
+            @for (row of heatmapRows; track row.day; let di = $index) {
+                <div class="flex items-center text-xs font-semibold" style="color: var(--color-text-secondary)">{{ row.day }}</div>
+                @for (cell of row.cells; track $index) {
+                <div class="heat-cell"
+                        style="height: 28px"
+                        [style.background]="'rgba(6,182,212,' + (cell * 0.7 + 0.05) + ')'"
+                        [title]="row.day + ' ' + hours[$index] + ' — ' + (cell * 100 | number:'1.0-0') + '% presença'">
+                </div>
+                }
+            }
+            </div>
+        </div>
+        <!-- Legend -->
+        <div class="flex items-center gap-2 mt-3 justify-end">
+            <span class="text-xs" style="color: var(--color-text-muted)">Baixo</span>
+            @for (step of heatLegend; track $index) {
+            <div class="rounded" style="width: 18px; height: 14px"
+                    [style.background]="'rgba(6,182,212,' + step + ')'"></div>
+            }
+            <span class="text-xs" style="color: var(--color-text-muted)">Alto</span>
+        </div>
+        </div>
+    </div>
+    }
+</div>

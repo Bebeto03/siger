@@ -1,1 +1,43 @@
-/* You can add global styles to this file, and also import other style files */
+@import "tailwindcss";
+
+/* ── Paleta SIGER (do protótipo) ── */
+:root {
+  --color-bg:           #0B1120;
+  --color-surface:      #111827;
+  --color-surface-light:#1F2937;
+  --color-surface-hover:#273548;
+  --color-border:       #2D3B4F;
+  --color-border-light: #374151;
+  --color-primary:      #06B6D4;
+  --color-primary-dark: #0891B2;
+  --color-primary-glow: rgba(6,182,212,0.15);
+  --color-accent:       #F59E0B;
+  --color-accent-glow:  rgba(245,158,11,0.15);
+  --color-success:      #10B981;
+  --color-danger:       #EF4444;
+  --color-warning:      #F59E0B;
+  --color-text-primary: #F1F5F9;
+  --color-text-secondary:#94A3B8;
+  --color-text-muted:   #64748B;
+}
+
+/* ── Reset base ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+}
+
+/* ── Scrollbar customizada ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-surface); }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }
+
+/* ── Input focus global ── */
+input:focus, select:focus, textarea:focus { outline: none; }
