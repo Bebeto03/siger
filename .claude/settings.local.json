@@ -18,7 +18,17 @@
       "Bash(taskkill /F /IM node.exe)",
       "Bash(taskkill //F //IM node.exe)",
       "Bash(xargs cat *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(git fetch *)",
+      "Bash(npm start *)",
+      "Bash(timeout 30 bash *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:4200)",
+      "Bash(curl *)",
+      "Bash(mvn spring-boot:run)",
+      "Bash(timeout 60 bash *)",
+      "PowerShell(Get-Command *)",
+      "PowerShell(Start-Process -FilePath \"cmd.exe\" -ArgumentList \"/c\", \"cd /d `\"C:\\\\Users\\\\Julio Cesar\\\\Documents\\\\SIGER\\\\siger-api`\" && mvnw.cmd spring-boot:run > `\"C:\\\\Users\\\\Julio Cesar\\\\Documents\\\\SIGER\\\\backend.log`\" 2>&1\" -WindowStyle Hidden)",
+      "Bash(Get-Random)"
     ]
   }
 }

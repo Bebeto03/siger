@@ -70,7 +70,7 @@ export class Dashboard implements OnInit {
   });
 
   pendingTasks = computed(() =>
-    this.tasks().filter(t => t.status === 'PENDENTE').length
+    this.tasks().filter(t => t.status === 'NAO_INICIADO').length
   );
 
   upcomingMeetings = computed(() =>
@@ -82,7 +82,7 @@ export class Dashboard implements OnInit {
 
   recentTasks = computed(() =>
     this.tasks()
-      .filter(t => t.status !== 'CONCLUIDA')
+      .filter(t => t.status !== 'CONCLUIDO')
       .slice(0, 3)
   );
 
@@ -136,17 +136,17 @@ export class Dashboard implements OnInit {
   }
 
   taskStatusLabel(s: string): string {
-    const m: Record<string, string> = { PENDENTE: 'Pendente', EM_ANDAMENTO: 'Em andamento', CONCLUIDA: 'Concluída' };
+    const m: Record<string, string> = { NAO_INICIADO: 'Pendente', EM_ANDAMENTO: 'Em andamento', CONCLUIDO: 'Concluída' };
     return m[s] ?? s;
   }
 
   taskStatusColor(s: string): string {
-    const m: Record<string, string> = { PENDENTE: 'var(--color-text-muted)', EM_ANDAMENTO: 'var(--color-warning)', CONCLUIDA: 'var(--color-success)' };
+    const m: Record<string, string> = { NAO_INICIADO: 'var(--color-text-muted)', EM_ANDAMENTO: 'var(--color-warning)', CONCLUIDO: 'var(--color-success)' };
     return m[s] ?? 'var(--color-text-muted)';
   }
 
   taskStatusBg(s: string): string {
-    const m: Record<string, string> = { PENDENTE: 'rgba(148,163,184,0.1)', EM_ANDAMENTO: 'rgba(245,158,11,0.15)', CONCLUIDA: 'rgba(16,185,129,0.15)' };
+    const m: Record<string, string> = { NAO_INICIADO: 'rgba(148,163,184,0.1)', EM_ANDAMENTO: 'rgba(245,158,11,0.15)', CONCLUIDO: 'rgba(16,185,129,0.15)' };
     return m[s] ?? 'rgba(148,163,184,0.1)';
   }
 }
