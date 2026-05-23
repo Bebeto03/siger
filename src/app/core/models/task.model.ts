@@ -1,4 +1,4 @@
-export type TaskStatus = 'PENDENTE' | 'EM_ANDAMENTO' | 'CONCLUIDA';
+export type TaskStatus = 'NAO_INICIADO' | 'EM_ANDAMENTO' | 'CONCLUIDO';
 
 export interface Task {
   id?: number;

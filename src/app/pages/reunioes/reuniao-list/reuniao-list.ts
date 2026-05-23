@@ -152,6 +152,7 @@ export class ReuniaoList implements OnInit {
       NAO_INICIADO: 'Não iniciada',
       EM_ANDAMENTO: 'Em andamento',
       CONCLUIDO:    'Concluída',
+      CANCELADO:    'Cancelada',
     };
     return map[status] ?? status;
   }
@@ -161,6 +162,7 @@ export class ReuniaoList implements OnInit {
       NAO_INICIADO: 'var(--color-primary)',
       EM_ANDAMENTO: 'var(--color-warning)',
       CONCLUIDO:    'var(--color-success)',
+      CANCELADO:    'var(--color-danger)',
     };
     return map[status] ?? 'var(--color-text-secondary)';
   }
@@ -170,6 +172,7 @@ export class ReuniaoList implements OnInit {
       NAO_INICIADO: 'rgba(6,182,212,0.15)',
       EM_ANDAMENTO: 'rgba(245,158,11,0.15)',
       CONCLUIDO:    'rgba(16,185,129,0.15)',
+      CANCELADO:    'rgba(239,68,68,0.15)',
     };
     return map[status] ?? 'rgba(148,163,184,0.1)';
   }

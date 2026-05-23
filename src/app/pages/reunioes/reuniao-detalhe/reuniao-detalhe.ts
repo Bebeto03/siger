@@ -219,7 +219,7 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
         : undefined;
       const nova = await this.taskService.criar({
         title:    this.taskForm.title.trim(),
-        status:   'PENDENTE',
+        status:   'NAO_INICIADO',
         dueDate:  this.taskForm.dueDate || undefined,
         assignee: assignee ? { id: assignee.id, name: assignee.name, email: assignee.email } : undefined,
         meeting:  { id: meetingId, title: this.meeting()!.title },
@@ -235,17 +235,17 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
   }
 
   taskStatusLabel(s: TaskStatus): string {
-    const m: Record<TaskStatus, string> = { PENDENTE: 'Pendente', EM_ANDAMENTO: 'Em andamento', CONCLUIDA: 'Concluída' };
+    const m: Record<TaskStatus, string> = { NAO_INICIADO: 'Pendente', EM_ANDAMENTO: 'Em andamento', CONCLUIDO: 'Concluída' };
     return m[s] ?? s;
   }
 
   taskStatusColor(s: TaskStatus): string {
-    const m: Record<TaskStatus, string> = { PENDENTE: 'var(--color-text-muted)', EM_ANDAMENTO: 'var(--color-warning)', CONCLUIDA: 'var(--color-success)' };
+    const m: Record<TaskStatus, string> = { NAO_INICIADO: 'var(--color-text-muted)', EM_ANDAMENTO: 'var(--color-warning)', CONCLUIDO: 'var(--color-success)' };
     return m[s] ?? 'var(--color-text-secondary)';
   }
 
   taskStatusBg(s: TaskStatus): string {
-    const m: Record<TaskStatus, string> = { PENDENTE: 'rgba(148,163,184,0.1)', EM_ANDAMENTO: 'rgba(245,158,11,0.15)', CONCLUIDA: 'rgba(16,185,129,0.15)' };
+    const m: Record<TaskStatus, string> = { NAO_INICIADO: 'rgba(148,163,184,0.1)', EM_ANDAMENTO: 'rgba(245,158,11,0.15)', CONCLUIDO: 'rgba(16,185,129,0.15)' };
     return m[s] ?? 'rgba(148,163,184,0.1)';
   }
 
@@ -312,17 +312,17 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
   }
 
   statusLabel(s: MeetingStatus): string {
-    const m: Record<MeetingStatus, string> = { NAO_INICIADO: 'Não iniciada', EM_ANDAMENTO: 'Em andamento', CONCLUIDO: 'Concluída' };
+    const m: Record<MeetingStatus, string> = { NAO_INICIADO: 'Não iniciada', EM_ANDAMENTO: 'Em andamento', CONCLUIDO: 'Concluída', CANCELADO: 'Cancelada' };
     return m[s] ?? s;
   }
 
   statusColor(s: MeetingStatus): string {
-    const m: Record<MeetingStatus, string> = { NAO_INICIADO: 'var(--color-primary)', EM_ANDAMENTO: 'var(--color-warning)', CONCLUIDO: 'var(--color-success)' };
+    const m: Record<MeetingStatus, string> = { NAO_INICIADO: 'var(--color-primary)', EM_ANDAMENTO: 'var(--color-warning)', CONCLUIDO: 'var(--color-success)', CANCELADO: 'var(--color-danger)' };
     return m[s] ?? 'var(--color-text-secondary)';
   }
 
   statusBg(s: MeetingStatus): string {
-    const m: Record<MeetingStatus, string> = { NAO_INICIADO: 'rgba(6,182,212,0.15)', EM_ANDAMENTO: 'rgba(245,158,11,0.15)', CONCLUIDO: 'rgba(16,185,129,0.15)' };
+    const m: Record<MeetingStatus, string> = { NAO_INICIADO: 'rgba(6,182,212,0.15)', EM_ANDAMENTO: 'rgba(245,158,11,0.15)', CONCLUIDO: 'rgba(16,185,129,0.15)', CANCELADO: 'rgba(239,68,68,0.15)' };
     return m[s] ?? 'rgba(148,163,184,0.1)';
   }
 

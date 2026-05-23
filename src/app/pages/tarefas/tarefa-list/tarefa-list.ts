@@ -11,9 +11,9 @@ import { User } from '../../../core/models/user.model';
 import { Meeting } from '../../../core/models/meeting.model';
 
 const COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
-  { status: 'PENDENTE',     label: 'Pendente',      color: 'var(--color-text-muted)'  },
-  { status: 'EM_ANDAMENTO', label: 'Em Andamento',  color: 'var(--color-warning)'     },
-  { status: 'CONCLUIDA',    label: 'Concluída',      color: 'var(--color-success)'     },
+  { status: 'NAO_INICIADO', label: 'Pendente',     color: 'var(--color-text-muted)' },
+  { status: 'EM_ANDAMENTO', label: 'Em Andamento', color: 'var(--color-warning)'    },
+  { status: 'CONCLUIDO',    label: 'Concluída',    color: 'var(--color-success)'    },
 ];
 
 @Component({
@@ -57,7 +57,7 @@ export class TarefaList implements OnInit {
   readonly columns = COLUMNS;
 
   form: { title: string; meetingId: number | null; assigneeId: number | null; dueDate: string; status: TaskStatus } = {
-    title: '', meetingId: null, assigneeId: null, dueDate: '', status: 'PENDENTE',
+    title: '', meetingId: null, assigneeId: null, dueDate: '', status: 'NAO_INICIADO',
   };
 
   tasksByStatus(status: TaskStatus): Task[] {
@@ -86,7 +86,7 @@ export class TarefaList implements OnInit {
   }
 
   openModal(): void {
-    this.form = { title: '', meetingId: this.filterMeetingId, assigneeId: null, dueDate: '', status: 'PENDENTE' };
+    this.form = { title: '', meetingId: this.filterMeetingId, assigneeId: null, dueDate: '', status: 'NAO_INICIADO' };
     this.showModal.set(true);
   }
 
@@ -103,7 +103,7 @@ export class TarefaList implements OnInit {
 
       const nova = await this.taskService.criar({
         title:    this.form.title.trim(),
-        status:   this.form.status,
+        status:   this.form.status ?? 'NAO_INICIADO',
         dueDate:  this.form.dueDate || undefined,
         assignee: assignee ? { id: assignee.id, name: assignee.name, email: assignee.email } : undefined,
         meeting:  { id: this.form.meetingId, title: meeting?.title },

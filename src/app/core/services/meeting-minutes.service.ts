@@ -17,7 +17,9 @@ export class MeetingMinutesService {
   }
 
   buscarPorReuniao(meetingId: number): Promise<MeetingMinutes | null> {
-    return this.listar().then(all => all.find(m => m.meeting.id === meetingId) ?? null);
+    return firstValueFrom(
+      this.http.get<MeetingMinutes>(`${this.api}/findCurrent/${meetingId}`)
+    ).catch(() => null);
   }
 
   buscar(id: number): Promise<MeetingMinutes> {
