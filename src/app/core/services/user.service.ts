@@ -15,6 +15,14 @@ export class UserService extends BaseResourceService<User> {
     return firstValueFrom(this.http.get<User[]>(`${this.apiPath}/findAll`));
   }
 
+  buscarMe(): Promise<User> {
+    return firstValueFrom(this.http.get<User>(`${this.apiPath}/me`));
+  }
+
+  alterarMe(data: { name: string; phone?: string }): Promise<User> {
+    return firstValueFrom(this.http.put<User>(`${this.apiPath}/me`, data));
+  }
+
   register(data: Partial<User>): Promise<User> {
     return firstValueFrom(this.http.post<User>(this.apiPath, data));
   }

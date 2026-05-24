@@ -55,7 +55,7 @@ export class AtaList implements OnInit {
       this.atas.set(
         minutes.map(m => ({
           minutes: m,
-          meeting: meetings.find(mt => mt.id === m.meeting.id),
+          meeting: meetings.find(mt => mt.id === m.meeting?.id),
         }))
       );
     } catch {

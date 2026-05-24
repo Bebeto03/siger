@@ -6,6 +6,24 @@ import { Meeting } from '../models/meeting.model';
 
 export type { Meeting } from '../models/meeting.model';
 
+export interface MeetingCreateDTO {
+  userId: number;
+  meetingDate: string;
+  title: string;
+  description: string;
+  location: string;
+  duration: number;
+}
+
+export interface MeetingUpdateDTO {
+  meetingDate: string;
+  title: string;
+  description: string;
+  location: string;
+  duration: number;
+  status?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class MeetingService {
   private readonly api = `${environment.apiUrl}/meeting`;
@@ -20,12 +38,16 @@ export class MeetingService {
     return firstValueFrom(this.http.get<Meeting>(`${this.api}/${id}`));
   }
 
-  criar(data: Omit<Meeting, 'id' | 'createdAt' | 'updatedAt'>): Promise<Meeting> {
-    return firstValueFrom(this.http.post<Meeting>(this.api, data));
+  criar(data: MeetingCreateDTO): Promise<Meeting> {
+    return firstValueFrom(this.http.post<Meeting>(`${this.api}/create`, data));
   }
 
-  editar(id: number, data: Partial<Meeting>): Promise<Meeting> {
-    return firstValueFrom(this.http.put<Meeting>(`${this.api}/${id}`, data));
+  editar(id: number, data: MeetingUpdateDTO): Promise<Meeting> {
+    return firstValueFrom(this.http.put<Meeting>(`${this.api}/update/${id}`, data));
+  }
+
+  cancelar(id: number): Promise<Meeting> {
+    return firstValueFrom(this.http.patch<Meeting>(`${this.api}/cancel/${id}`, {}));
   }
 
   excluir(id: number): Promise<void> {

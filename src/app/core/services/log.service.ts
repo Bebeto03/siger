@@ -15,12 +15,7 @@ export class LogService {
 
   constructor(private http: HttpClient) {}
 
-  registrar(operation: string, userName: string): Promise<void> {
-    const entry: LogEntry = {
-      operation,
-      userName,
-      date: new Date().toISOString(),
-    };
-    return firstValueFrom(this.http.post<void>(this.api, entry));
+  registrar(operation: string, _userName?: string): Promise<void> {
+    return firstValueFrom(this.http.post<void>(this.api, { operation }));
   }
 }

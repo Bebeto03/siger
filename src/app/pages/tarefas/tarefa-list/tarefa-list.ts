@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { TaskService } from '../../../core/services/task.service';
 import { UserService } from '../../../core/services/user.service';
 import { MeetingService } from '../../../core/services/meeting.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ToastComponent } from '../../../shared/components/toast/toast';
 import { Task, TaskStatus } from '../../../core/models/task.model';
@@ -43,6 +44,7 @@ export class TarefaList implements OnInit {
   private taskService    = inject(TaskService);
   private userService    = inject(UserService);
   private meetingService = inject(MeetingService);
+  private auth           = inject(AuthService);
   private notify         = inject(NotificationService);
 
   tasks        = signal<Task[]>([]);
@@ -70,9 +72,12 @@ export class TarefaList implements OnInit {
   async ngOnInit(): Promise<void> {
     this.loading.set(true);
     try {
+      const usersPromise = this.auth.temPermissao('ROLE_ADMIN')
+        ? this.userService.listar().catch(() => [] as User[])
+        : Promise.resolve([] as User[]);
       const [tasks, users, meetings] = await Promise.all([
         this.taskService.listar(),
-        this.userService.listar().catch(() => []),
+        usersPromise,
         this.meetingService.listar().catch(() => []),
       ]);
       this.tasks.set(tasks);
@@ -102,11 +107,11 @@ export class TarefaList implements OnInit {
         : undefined;
 
       const nova = await this.taskService.criar({
-        title:    this.form.title.trim(),
-        status:   this.form.status ?? 'NAO_INICIADO',
-        dueDate:  this.form.dueDate || undefined,
-        assignee: assignee ? { id: assignee.id, name: assignee.name, email: assignee.email } : undefined,
-        meeting:  { id: this.form.meetingId, title: meeting?.title },
+        title:      this.form.title.trim(),
+        status:     this.form.status ?? 'NAO_INICIADO',
+        meetingId:  this.form.meetingId,
+        assigneeId: assignee?.id ?? undefined,
+        dueDate:    this.form.dueDate || undefined,
       });
       this.tasks.update(list => [...list, nova]);
       this.notify.success('Tarefa criada!');

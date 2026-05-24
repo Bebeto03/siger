@@ -87,8 +87,17 @@ export class UsuarioForm implements OnInit {
     try {
       const { confirmPassword, ...data } = this.form.value as any;
       if (this.isEdit) {
-        if (!data.password) delete data.password;
-        await this.userService.alterar({ ...this.user()!, ...data } as User);
+        const payload: Partial<User> = {
+          id:     this.user()!.id,
+          name:   data.name,
+          email:  data.email,
+          cpf:    data.cpf,
+          phone:  data.phone  || undefined,
+          type:   data.type,
+          status: data.status,
+        };
+        if (data.password) payload['password' as keyof User] = data.password as any;
+        await this.userService.alterar(payload as User);
         this.notify.success('Usuário atualizado com sucesso.');
       } else {
         await this.userService.incluir(data as User);
