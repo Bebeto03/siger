@@ -2,7 +2,8 @@
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "version": 1,
   "cli": {
-    "packageManager": "npm"
+    "packageManager": "npm",
+    "analytics": "3bf3c962-cd82-4305-b083-9d2d2ae57a09"
   },
   "newProjectRoot": "projects",
   "projects": {
@@ -48,18 +49,35 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "mock": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environment/environment.ts",
+                  "with": "src/environment/environment.mock.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "proxyConfig": "proxy.conf.json"
+          },
           "configurations": {
             "production": {
               "buildTarget": "siger:build:production"
             },
             "development": {
               "buildTarget": "siger:build:development"
+            },
+            "mock": {
+              "buildTarget": "siger:build:mock"
             }
           },
           "defaultConfiguration": "development"

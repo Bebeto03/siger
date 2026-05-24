@@ -1,0 +1,26 @@
+.desabilitar-router{
+    opacity: 0.7;
+    z-index: 1;
+    height: 100%;
+    width: 100%;
+    pointer-events: none;
+}
+
+.homologacao {
+    width: 225px; 
+    background: #c00d0d; 
+    color: #fff; 
+    vertical-align: middle; 
+    transform: rotatez(+45deg); 
+    text-align: center; 
+    top: 50px; 
+    right: -55px; 
+    position: fixed; 
+    padding: 2px; 
+    z-index: 9999;
+    font-size: 12px;
+}
+
+.mostrando-menu {
+    padding-left: 230px;
+}
