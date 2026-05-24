@@ -37,7 +37,9 @@
         <div class="rounded-xl p-5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
             <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-4"
                 style="background: rgba(16,185,129,0.12)">👥</div>
-            <div class="text-3xl font-black mb-1" style="color: var(--color-text-primary); letter-spacing: -1px">87%</div>
+            <div class="text-3xl font-black mb-1" style="color: var(--color-text-primary); letter-spacing: -1px">
+            {{ attendanceRate() !== null ? (attendanceRate()! | number:'1.0-0') + '%' : '—' }}
+            </div>
             <div class="text-xs" style="color: var(--color-text-muted)">Taxa média de presença</div>
         </div>
 
@@ -45,7 +47,7 @@
             <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-4"
                 style="background: rgba(245,158,11,0.12)">⏱</div>
             <div class="text-3xl font-black mb-1" style="color: var(--color-text-primary); letter-spacing: -1px">
-            {{ avgDuration() }} min
+            {{ avgDuration() > 0 ? avgDuration() + ' min' : '—' }}
             </div>
             <div class="text-xs" style="color: var(--color-text-muted)">Tempo médio</div>
         </div>
@@ -53,8 +55,10 @@
         <div class="rounded-xl p-5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
             <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-4"
                 style="background: rgba(139,92,246,0.12)">📈</div>
-            <div class="text-3xl font-black mb-1" style="color: var(--color-text-primary); letter-spacing: -1px">92%</div>
-            <div class="text-xs" style="color: var(--color-text-muted)">Eficiência geral</div>
+            <div class="text-3xl font-black mb-1" style="color: var(--color-text-primary); letter-spacing: -1px">
+            {{ totalMeetings() > 0 ? (concluido() * 100 | number:'1.0-0') + '%' : '—' }}
+            </div>
+            <div class="text-xs" style="color: var(--color-text-muted)">Taxa de conclusão</div>
         </div>
         </div>
 
@@ -63,12 +67,12 @@
         <!-- Attendance Bar Chart -->
         <div class="rounded-xl p-5" style="flex: 1; min-width: 300px; background: var(--color-surface); border: 1px solid var(--color-border)">
             <h3 class="text-sm font-bold mb-5" style="color: var(--color-text-primary)">
-            Taxa de Comparecimento (últimos 6 meses)
+            Reuniões por Mês (últimos 6 meses)
             </h3>
             <div class="flex items-end gap-3 px-2" style="height: 140px">
-            @for (bar of attendanceBars; track bar.month) {
+            @for (bar of attendanceBars(); track bar.month) {
                 <div class="flex-1 flex flex-col items-center gap-1">
-                <span class="text-xs font-semibold" style="color: var(--color-primary)">{{ bar.pct }}%</span>
+                <span class="text-xs font-semibold" style="color: var(--color-primary)">{{ bar.count }}</span>
                 <div class="chart-bar w-full"
                         [style.height]="(bar.pct * 1.1) + 'px'"
                         style="background: linear-gradient(180deg, var(--color-primary), #0891B2)">
@@ -77,7 +81,7 @@
             }
             </div>
             <div class="flex justify-around mt-2">
-            @for (bar of attendanceBars; track bar.month) {
+            @for (bar of attendanceBars(); track bar.month) {
                 <span class="text-xs" style="color: var(--color-text-muted)">{{ bar.month }}</span>
             }
             </div>
@@ -133,7 +137,7 @@
 
         <!-- Heatmap -->
         <div class="rounded-xl p-5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
-        <h3 class="text-sm font-bold mb-4" style="color: var(--color-text-primary)">Mapa de Calor — Melhor Horário</h3>
+        <h3 class="text-sm font-bold mb-4" style="color: var(--color-text-primary)">Mapa de Calor — Frequência por Horário</h3>
         <div style="overflow-x: auto">
             <div style="display: grid; grid-template-columns: 44px repeat(10, 1fr); gap: 3px; min-width: 500px">
             <!-- Header row -->
@@ -142,7 +146,7 @@
                 <div class="text-center text-[10px] pb-1" style="color: var(--color-text-muted)">{{ h }}</div>
             }
             <!-- Data rows -->
-            @for (row of heatmapRows; track row.day; let di = $index) {
+            @for (row of heatmapRows(); track row.day; let di = $index) {
                 <div class="flex items-center text-xs font-semibold" style="color: var(--color-text-secondary)">{{ row.day }}</div>
                 @for (cell of row.cells; track $index) {
                 <div class="heat-cell"

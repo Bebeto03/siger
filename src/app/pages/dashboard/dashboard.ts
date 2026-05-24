@@ -1,8 +1,10 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { MeetingService } from '../../core/services/meeting.service';
 import { TaskService } from '../../core/services/task.service';
 import { ParticipantService } from '../../core/services/participant.service';
+import { DashboardService } from '../../core/services/dashboard.service';
 import { AuthService } from '../../core/services/auth.service';
 import { Meeting } from '../../core/models/meeting.model';
 import { Task } from '../../core/models/task.model';
@@ -10,6 +12,7 @@ import { Task } from '../../core/models/task.model';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
+  imports: [DecimalPipe],
   styles: [`
     .stat-card { transition: border-color 0.15s, box-shadow 0.15s; }
     .meeting-card { transition: border-color 0.15s, box-shadow 0.15s; cursor: pointer; }
@@ -23,32 +26,38 @@ import { Task } from '../../core/models/task.model';
 })
 export class Dashboard implements OnInit {
   readonly router = inject(Router);
-  private meetingService = inject(MeetingService);
-  private taskService = inject(TaskService);
+  private meetingService     = inject(MeetingService);
+  private taskService        = inject(TaskService);
   private participantService = inject(ParticipantService);
-  private auth = inject(AuthService);
+  private dashboardService   = inject(DashboardService);
+  private auth               = inject(AuthService);
 
-  meetings = signal<Meeting[]>([]);
-  tasks = signal<Task[]>([]);
-  participantCount = signal<Record<number, number>>({});
-  loading = signal(true);
+  meetings                = signal<Meeting[]>([]);
+  tasks                   = signal<Task[]>([]);
+  participantCount        = signal<Record<number, number>>({});
+  pendingConfirmationCount = signal<Record<number, number>>({});
+  attendanceRate          = signal<number | null>(null);
+  loading                 = signal(true);
 
   podecriarReuniao = computed(() => this.auth.temQualquerPermissao(['ROLE_ADMIN', 'ROLE_ORGANIZADOR']));
 
-  readonly chartBars = [
-    { label: 'Jan', count: 3, pct: 35, highlight: false },
-    { label: 'Fev', count: 2, pct: 22, highlight: false },
-    { label: 'Mar', count: 5, pct: 58, highlight: false },
-    { label: 'Abr', count: 4, pct: 47, highlight: false },
-    { label: 'Mai', count: 7, pct: 82, highlight: false },
-    { label: 'Jun', count: 5, pct: 60, highlight: false },
-    { label: 'Jul', count: 3, pct: 35, highlight: false },
-    { label: 'Ago', count: 6, pct: 70, highlight: false },
-    { label: 'Set', count: 4, pct: 47, highlight: false },
-    { label: 'Out', count: 8, pct: 95, highlight: true  },
-    { label: 'Nov', count: 3, pct: 35, highlight: false },
-    { label: 'Dez', count: 5, pct: 58, highlight: false },
-  ];
+  readonly monthLabels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  chartBars = computed(() => {
+    const now = new Date();
+    const counts = new Array(12).fill(0);
+    for (const m of this.meetings()) {
+      const month = new Date(m.meetingDate).getMonth();
+      counts[month]++;
+    }
+    const maxCount = Math.max(...counts, 1);
+    return this.monthLabels.map((label, i) => ({
+      label,
+      count: counts[i],
+      pct: Math.round((counts[i] / maxCount) * 100),
+      highlight: i === now.getMonth(),
+    }));
+  });
 
   meetingsThisMonth = computed(() => {
     const now = new Date();
@@ -86,11 +95,13 @@ export class Dashboard implements OnInit {
       .slice(0, 3)
   );
 
-  pendingConfirmations = computed(() =>
-    this.meetings()
-      .filter(m => m.status === 'NAO_INICIADO')
-      .slice(0, 3)
-  );
+  pendingConfirmations = computed(() => {
+    const pendingMap = this.pendingConfirmationCount();
+    return this.meetings()
+      .filter(m => m.status === 'NAO_INICIADO' && (pendingMap[m.id!] ?? 0) > 0)
+      .sort((a, b) => new Date(a.meetingDate).getTime() - new Date(b.meetingDate).getTime())
+      .slice(0, 3);
+  });
 
   async ngOnInit(): Promise<void> {
     try {
@@ -102,16 +113,25 @@ export class Dashboard implements OnInit {
       this.meetings.set(meetings);
       this.tasks.set(tasks);
       const countMap: Record<number, number> = {};
+      const pendingMap: Record<number, number> = {};
       for (const p of participants) {
         const mid = p.meeting.id;
         countMap[mid] = (countMap[mid] ?? 0) + 1;
+        if (!p.participation) {
+          pendingMap[mid] = (pendingMap[mid] ?? 0) + 1;
+        }
       }
       this.participantCount.set(countMap);
+      this.pendingConfirmationCount.set(pendingMap);
     } catch {
       // dashboard degrades gracefully
     } finally {
       this.loading.set(false);
     }
+    // attendance rate carrega de forma não-bloqueante
+    this.dashboardService.attendanceGeneral()
+      .then(r => this.attendanceRate.set(r != null && isFinite(r) ? r : null))
+      .catch(() => {});
   }
 
   formatDate(dateStr: string): string {

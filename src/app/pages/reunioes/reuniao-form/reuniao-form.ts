@@ -1,7 +1,7 @@
-import { Component, inject, signal, OnInit, computed } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { MeetingService } from '../../../core/services/meeting.service';
+import { MeetingService, MeetingCreateDTO, MeetingUpdateDTO } from '../../../core/services/meeting.service';
 import { ParticipantService } from '../../../core/services/participant.service';
 import { TopicService } from '../../../core/services/topic.service';
 import { MeetingMinutesService } from '../../../core/services/meeting-minutes.service';
@@ -11,7 +11,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ToastComponent } from '../../../shared/components/toast/toast';
 import { Meeting } from '../../../core/models/meeting.model';
-import { Participant, ParticipantRole } from '../../../core/models/participant.model';
+import { ParticipantRole } from '../../../core/models/participant.model';
 import { TopicPriority } from '../../../core/models/topic.model';
 import { User } from '../../../core/models/user.model';
 
@@ -92,7 +92,7 @@ export class ReuniaoForm implements OnInit {
     { i: 4, label: 'Revisão'      },
   ];
 
-  reviewRows = computed(() => {
+  get reviewRows() {
     const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
     let dateLabel = '—';
     if (this.formDate && this.formTime) {
@@ -107,16 +107,24 @@ export class ReuniaoForm implements OnInit {
       { key: 'Participantes', value: `${this.formParticipants.length} convidado(s)`         },
       { key: 'Pautas',        value: `${this.formTopics.length} item(s)`                   },
     ];
-  });
+  }
 
-  canAdvance = computed(() => {
+  get canAdvance(): boolean {
     if (this.step() === 1)
       return !!(this.form.title?.trim() && this.formDate && this.formTime && this.form.duration && this.form.location?.trim());
     return true;
-  });
+  }
 
   async ngOnInit(): Promise<void> {
-    this.allUsers = await this.userService.listar().catch(() => []);
+    if (this.auth.temPermissao('ROLE_ADMIN')) {
+      this.allUsers = await this.userService.listar().catch(() => []);
+    } else if (this.auth.temPermissao('ROLE_ORGANIZADOR')) {
+      const participants = await this.participantService.listar().catch(() => []);
+      const seen = new Set<number>();
+      this.allUsers = participants
+        .filter(p => p.user?.id && !seen.has(p.user.id) && seen.add(p.user.id))
+        .map(p => ({ id: p.user.id, name: p.user.name ?? '', email: p.user.email ?? '' } as User));
+    }
 
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -125,7 +133,7 @@ export class ReuniaoForm implements OnInit {
       try {
         const m = await this.meetingService.buscar(this.editId);
         this.form = { title: m.title, description: m.description, location: m.location,
-                      meetingDate: m.meetingDate, duration: m.duration, status: m.status, organizer: m.organizer };
+                      meetingDate: m.meetingDate, duration: m.duration, status: m.status };
         if (m.meetingDate) {
           const d = new Date(m.meetingDate);
           this.formDate = d.toISOString().substring(0, 10);
@@ -139,9 +147,8 @@ export class ReuniaoForm implements OnInit {
           role:   p.role,
         }));
         const minutes = await this.minutesService.buscarPorReuniao(this.editId);
-        if (minutes?.id) {
-          const topics = await this.topicService.listarPorAta(minutes.id);
-          this.formTopics = topics.map(t => ({
+        if (minutes) {
+          this.formTopics = (minutes.topics ?? []).map(t => ({
             title:      t.title,
             priority:   t.priority,
             timer:      t.timer ?? 15,
@@ -186,25 +193,46 @@ export class ReuniaoForm implements OnInit {
     this.formTopics.forEach((t, idx) => t.orderIndex = idx + 1);
   }
 
-  next(): void { if (this.canAdvance()) this.step.update(s => s + 1); }
+  next(): void { if (this.canAdvance) this.step.update(s => s + 1); }
   prev(): void { this.step.update(s => Math.max(1, s - 1)); }
   goBack(): void { this.router.navigate(['/reunioes']); }
 
   async submit(): Promise<void> {
     this.saving.set(true);
     try {
-      const payload = { ...this.form, meetingDate: `${this.formDate}T${this.formTime}:00` };
+      const meetingDate = `${this.formDate}T${this.formTime}:00`;
 
       if (this.isEdit && this.editId) {
-        await this.meetingService.editar(this.editId, payload);
+        const updateDTO: MeetingUpdateDTO = {
+          meetingDate,
+          title:       this.form.title,
+          description: this.form.description,
+          location:    this.form.location,
+          duration:    this.form.duration,
+          status:      this.form.status,
+        };
+        await this.meetingService.editar(this.editId, updateDTO);
         await this.syncParticipants(this.editId);
         await this.syncTopics(this.editId);
         this.logService.registrar(`Reunião editada: ${this.form.title}`, this.auth.getNomeUsuario()).catch(() => {});
         this.notify.success('Reunião atualizada com sucesso!');
       } else {
-        const meeting = await this.meetingService.criar(payload);
+        const me = await this.userService.buscarMe();
+        const createDTO: MeetingCreateDTO = {
+          userId:      me.id,
+          meetingDate,
+          title:       this.form.title,
+          description: this.form.description,
+          location:    this.form.location,
+          duration:    this.form.duration,
+        };
+        const meeting = await this.meetingService.criar(createDTO);
         await this.syncParticipants(meeting.id!);
-        await this.syncTopics(meeting.id!);
+        if (this.formTopics.some(t => t.title.trim())) {
+          await this.syncTopics(meeting.id!).catch(() => {
+            this.notify.warning('As pautas não puderam ser salvas. Adicione-as na tela de detalhes.');
+          });
+        }
         this.logService.registrar(`Reunião criada: ${this.form.title}`, this.auth.getNomeUsuario()).catch(() => {});
         this.notify.success('Reunião criada com sucesso!');
       }
@@ -221,7 +249,7 @@ export class ReuniaoForm implements OnInit {
     await Promise.all(existing.map(p => this.participantService.excluir(p.id!)));
     await Promise.all(
       this.formParticipants.map(p =>
-        this.participantService.criar({ role: p.role, user: { id: p.userId }, meeting: { id: meetingId } })
+        this.participantService.criar({ userId: p.userId, meetingId, role: p.role })
       )
     );
   }
@@ -229,20 +257,22 @@ export class ReuniaoForm implements OnInit {
   private async syncTopics(meetingId: number): Promise<void> {
     let minutes = await this.minutesService.buscarPorReuniao(meetingId);
     if (!minutes) {
-      minutes = await this.minutesService.criar({ objectives: '', notes: '', decision: '', meeting: { id: meetingId } });
+      minutes = await this.minutesService.criar(
+        { meetingId, objectives: '', notes: '', decision: '' },
+        { skipNavigation: true }
+      );
     }
-    const existing = await this.topicService.listarPorAta(minutes.id!);
-    await Promise.all(existing.map(t => this.topicService.excluir(t.id!)));
+    await Promise.all((minutes.topics ?? []).map(t => this.topicService.excluir(t.id!)));
     await Promise.all(
       this.formTopics
         .filter(t => t.title.trim())
         .map(t => this.topicService.criar({
-          title:         t.title,
-          priority:      t.priority,
-          timer:         t.timer,
-          orderIndex:    t.orderIndex,
-          concluded:     false,
-          meetingMinutes: { id: minutes!.id! },
+          meetingMinutesId: minutes!.id!,
+          title:            t.title,
+          priority:         t.priority,
+          timer:            t.timer,
+          orderIndex:       t.orderIndex,
+          concluded:        false,
         }))
     );
   }

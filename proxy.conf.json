@@ -6,7 +6,7 @@
     "headers": {
       "Origin": "http://localhost:8080"
     },
-    "logLevel": "debug"
+    "logLevel": "warn"
   },
   "/api": {
     "target": "http://localhost:8080",
@@ -15,6 +15,6 @@
     "headers": {
       "Origin": "http://localhost:8080"
     },
-    "logLevel": "debug"
+    "logLevel": "warn"
   }
 }

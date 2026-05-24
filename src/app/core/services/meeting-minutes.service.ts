@@ -1,10 +1,18 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environment/environment';
 import { MeetingMinutes } from '../models/meeting-minutes.model';
+import { SKIP_ERROR_NAVIGATION } from '../interceptors/error.interceptor';
 
 export type { MeetingMinutes } from '../models/meeting-minutes.model';
+
+export interface MeetingMinutesDTO {
+  meetingId: number;
+  objectives: string;
+  notes: string;
+  decision: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class MeetingMinutesService {
@@ -18,7 +26,9 @@ export class MeetingMinutesService {
 
   buscarPorReuniao(meetingId: number): Promise<MeetingMinutes | null> {
     return firstValueFrom(
-      this.http.get<MeetingMinutes>(`${this.api}/findCurrent/${meetingId}`)
+      this.http.get<MeetingMinutes>(`${this.api}/findCurrent/${meetingId}`, {
+        context: new HttpContext().set(SKIP_ERROR_NAVIGATION, true),
+      })
     ).catch(() => null);
   }
 
@@ -26,11 +36,14 @@ export class MeetingMinutesService {
     return firstValueFrom(this.http.get<MeetingMinutes>(`${this.api}/${id}`));
   }
 
-  criar(data: Omit<MeetingMinutes, 'id' | 'topics'>): Promise<MeetingMinutes> {
-    return firstValueFrom(this.http.post<MeetingMinutes>(this.api, data));
+  criar(data: MeetingMinutesDTO, opts?: { skipNavigation?: boolean }): Promise<MeetingMinutes> {
+    const context = opts?.skipNavigation
+      ? new HttpContext().set(SKIP_ERROR_NAVIGATION, true)
+      : undefined;
+    return firstValueFrom(this.http.post<MeetingMinutes>(this.api, data, { context }));
   }
 
-  editar(id: number, data: Partial<MeetingMinutes>): Promise<MeetingMinutes> {
+  editar(id: number, data: Partial<MeetingMinutesDTO>): Promise<MeetingMinutes> {
     return firstValueFrom(this.http.put<MeetingMinutes>(`${this.api}/${id}`, data));
   }
 

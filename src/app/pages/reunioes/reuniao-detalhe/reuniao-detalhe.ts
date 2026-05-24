@@ -1,5 +1,6 @@
 import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { environment } from '../../../../environment/environment';
 import { FormsModule } from '@angular/forms';
 import { MeetingService } from '../../../core/services/meeting.service';
 import { ParticipantService } from '../../../core/services/participant.service';
@@ -100,7 +101,9 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
     this.loadParticipants(id);
     this.loadMinutesAndTopics(id);
     this.loadTasks(id);
-    this.userService.listar().then(u => this.allUsers.set(u)).catch(() => {});
+    if (this.auth.temPermissao('ROLE_ADMIN')) {
+      this.userService.listar().then(u => this.allUsers.set(u)).catch(() => {});
+    }
   }
 
   ngOnDestroy(): void { this.stopTimer(); }
@@ -124,8 +127,7 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
       this.minutes.set(min);
       if (min) {
         this.minutesForm = { objectives: min.objectives, notes: min.notes, decision: min.decision };
-        const t = await this.topicService.listarPorAta(min.id!);
-        this.topics.set(t.sort((a, b) => a.orderIndex - b.orderIndex));
+        this.topics.set((min.topics ?? []).sort((a, b) => a.orderIndex - b.orderIndex));
       }
     } catch {
       this.notify.error('Erro ao carregar ata e pautas.');
@@ -175,11 +177,11 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
     if (!meetingId) return;
     this.savingMinutes.set(true);
     try {
-      const payload = { ...this.minutesForm, meeting: { id: meetingId } };
+      const payload = { meetingId, ...this.minutesForm };
       if (this.minutes()?.id) {
         await this.minutesService.editar(this.minutes()!.id!, payload);
       } else {
-        const created = await this.minutesService.criar(payload);
+        const created = await this.minutesService.criar(payload, { skipNavigation: true });
         this.minutes.set(created);
       }
       const now   = new Date();
@@ -218,11 +220,11 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
         ? this.allUsers().find(u => u.id === this.taskForm.assigneeId)
         : undefined;
       const nova = await this.taskService.criar({
-        title:    this.taskForm.title.trim(),
-        status:   'NAO_INICIADO',
-        dueDate:  this.taskForm.dueDate || undefined,
-        assignee: assignee ? { id: assignee.id, name: assignee.name, email: assignee.email } : undefined,
-        meeting:  { id: meetingId, title: this.meeting()!.title },
+        title:      this.taskForm.title.trim(),
+        status:     'NAO_INICIADO',
+        meetingId:  meetingId,
+        assigneeId: assignee?.id ?? undefined,
+        dueDate:    this.taskForm.dueDate || undefined,
       });
       this.tasks.update(list => [...list, nova]);
       this.showTaskModal.set(false);
@@ -252,6 +254,12 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
   formatShortDate(dateStr: string): string {
     const d = new Date(dateStr);
     return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}`;
+  }
+
+  exportPdf(): void {
+    const id = this.meeting()?.id;
+    if (!id) return;
+    window.open(`${environment.apiUrl}/pdf/meeting/${id}`, '_blank');
   }
 
   onComingSoon(feature: string): void {

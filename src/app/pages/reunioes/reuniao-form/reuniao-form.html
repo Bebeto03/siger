@@ -181,7 +181,7 @@
         @if (step() === 4) {
         <h3 class="text-base font-bold mb-5" style="color: var(--color-text-primary)">Revisão</h3>
         <div class="flex flex-col gap-4">
-            @for (row of reviewRows(); track row.key) {
+            @for (row of reviewRows; track row.key) {
             <div class="flex justify-between items-center py-2.5 border-b" style="border-color: var(--color-border)">
                 <span class="text-sm" style="color: var(--color-text-muted)">{{ row.key }}</span>
                 <span class="text-sm font-semibold" style="color: var(--color-text-primary)">{{ row.value }}</span>
@@ -205,9 +205,9 @@
             ← Anterior
         </button>
         @if (step() < 4) {
-            <button (click)="next()" [disabled]="!canAdvance()"
+            <button (click)="next()" [disabled]="!canAdvance"
             class="btn-primary px-5 py-2.5 rounded-lg text-sm font-semibold"
-            [style.opacity]="canAdvance() ? '1' : '0.5'"
+            [style.opacity]="canAdvance ? '1' : '0.5'"
             style="background: var(--color-primary); color: #000; border: none; cursor: pointer">
             Próximo →
             </button>

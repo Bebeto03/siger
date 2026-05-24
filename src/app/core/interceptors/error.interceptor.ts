@@ -1,12 +1,15 @@
-import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
+import { HttpInterceptorFn, HttpErrorResponse, HttpContextToken } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { NotificationService } from '../services/notification.service';
 
+export const SKIP_ERROR_NAVIGATION = new HttpContextToken<boolean>(() => false);
+
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const notify = inject(NotificationService);
+  const skipNavigation = req.context.get(SKIP_ERROR_NAVIGATION);
 
   return next(req).pipe(
     catchError((err: HttpErrorResponse) => {
@@ -16,7 +19,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           router.navigate(['/login']);
           break;
         case 403:
-          router.navigate(['/acesso-negado']);
+          if (!skipNavigation) router.navigate(['/acesso-negado']);
           break;
         case 400:
           notify.warning(err.error?.message ?? 'Dados inválidos. Verifique as informações.');
