@@ -42,7 +42,8 @@ let mockMeetings: any[] = [
     meetingDate: '2026-04-28T09:00:00',
     duration: 60,
     status: 'NAO_INICIADO',
-    organizer: { id: 2, name: 'João Organizador', email: 'joao@siger.com' },
+    organizerId: 2,
+    organizerName: 'João Organizador',
   },
   {
     id: 2,
@@ -52,7 +53,8 @@ let mockMeetings: any[] = [
     meetingDate: '2026-04-28T14:00:00',
     duration: 45,
     status: 'NAO_INICIADO',
-    organizer: { id: 5, name: 'Ana Pereira', email: 'ana@siger.com' },
+    organizerId: 5,
+    organizerName: 'Ana Pereira',
   },
   {
     id: 3,
@@ -62,7 +64,8 @@ let mockMeetings: any[] = [
     meetingDate: '2026-04-25T16:00:00',
     duration: 60,
     status: 'CONCLUIDO',
-    organizer: { id: 2, name: 'João Organizador', email: 'joao@siger.com' },
+    organizerId: 2,
+    organizerName: 'João Organizador',
   },
   {
     id: 4,
@@ -72,7 +75,8 @@ let mockMeetings: any[] = [
     meetingDate: '2026-04-30T10:00:00',
     duration: 90,
     status: 'NAO_INICIADO',
-    organizer: { id: 2, name: 'João Organizador', email: 'joao@siger.com' },
+    organizerId: 2,
+    organizerName: 'João Organizador',
   },
   {
     id: 5,
@@ -82,7 +86,8 @@ let mockMeetings: any[] = [
     meetingDate: '2026-04-24T09:00:00',
     duration: 15,
     status: 'CONCLUIDO',
-    organizer: { id: 2, name: 'João Organizador', email: 'joao@siger.com' },
+    organizerId: 2,
+    organizerName: 'João Organizador',
   },
 ];
 let nextMeetingId = 6;
@@ -117,11 +122,49 @@ let nextParticipantId = 18;
 // ─── Fake Meeting Minutes ────────────────────────────────────────────────────
 
 let mockMinutes: any[] = [
-  { id: 1, objectives: 'Definir escopo do sprint 4', notes: 'Revisão do backlog concluída. Metas definidas.', decision: 'Sprint focado em módulo de relatórios.', meeting: { id: 1 } },
-  { id: 2, objectives: 'Revisar pendências do Projeto X', notes: 'Pendências listadas e discutidas com as equipes.', decision: 'Prazo estendido em 2 semanas.', meeting: { id: 2 } },
-  { id: 3, objectives: 'Retrospectiva do sprint 3', notes: 'Boa comunicação entre equipes. Melhorar code review.', decision: 'Adotar pair programming nas próximas sprints.', meeting: { id: 3 } },
-  { id: 4, objectives: 'Kickoff do módulo de IA', notes: '', decision: '', meeting: { id: 4 } },
-  { id: 5, objectives: 'Daily standup', notes: 'Sem impedimentos.', decision: '', meeting: { id: 5 } },
+  {
+    id: 1, objectives: 'Definir escopo do sprint 4', notes: 'Revisão do backlog concluída. Metas definidas.',
+    decision: 'Sprint focado em módulo de relatórios.', version: 1, isCurrent: true, meetingId: 1, meeting: { id: 1 },
+    topics: [
+      { id: 1,  title: 'Revisão do backlog',           priority: 'ALTA',  timer: 15, orderIndex: 1, concluded: false },
+      { id: 2,  title: 'Definição de metas do sprint', priority: 'ALTA',  timer: 20, orderIndex: 2, concluded: false },
+      { id: 3,  title: 'Distribuição de tarefas',      priority: 'MEDIA', timer: 15, orderIndex: 3, concluded: false },
+    ],
+  },
+  {
+    id: 2, objectives: 'Revisar pendências do Projeto X', notes: 'Pendências listadas e discutidas com as equipes.',
+    decision: 'Prazo estendido em 2 semanas.', version: 1, isCurrent: true, meetingId: 2, meeting: { id: 2 },
+    topics: [
+      { id: 4,  title: 'Revisão de pendências', priority: 'ALTA',  timer: 20, orderIndex: 1, concluded: false },
+      { id: 5,  title: 'Próximos passos',       priority: 'MEDIA', timer: 15, orderIndex: 2, concluded: false },
+    ],
+  },
+  {
+    id: 3, objectives: 'Retrospectiva do sprint 3', notes: 'Boa comunicação entre equipes. Melhorar code review.',
+    decision: 'Adotar pair programming nas próximas sprints.', version: 1, isCurrent: true, meetingId: 3, meeting: { id: 3 },
+    topics: [
+      { id: 6,  title: 'O que funcionou bem',         priority: 'MEDIA', timer: 15, orderIndex: 1, concluded: true  },
+      { id: 7,  title: 'O que pode melhorar',         priority: 'ALTA',  timer: 20, orderIndex: 2, concluded: true  },
+      { id: 8,  title: 'Ações para o próximo sprint', priority: 'ALTA',  timer: 15, orderIndex: 3, concluded: true  },
+    ],
+  },
+  {
+    id: 4, objectives: 'Kickoff do módulo de IA', notes: '', decision: '',
+    version: 1, isCurrent: true, meetingId: 4, meeting: { id: 4 },
+    topics: [
+      { id: 9,  title: 'Apresentação do escopo',  priority: 'ALTA',  timer: 30, orderIndex: 1, concluded: false },
+      { id: 10, title: 'Escolha de tecnologias',  priority: 'ALTA',  timer: 30, orderIndex: 2, concluded: false },
+      { id: 11, title: 'Distribuição de tarefas', priority: 'MEDIA', timer: 20, orderIndex: 3, concluded: false },
+    ],
+  },
+  {
+    id: 5, objectives: 'Daily standup', notes: 'Sem impedimentos.', decision: '',
+    version: 1, isCurrent: true, meetingId: 5, meeting: { id: 5 },
+    topics: [
+      { id: 12, title: 'Updates individuais', priority: 'MEDIA', timer: 10, orderIndex: 1, concluded: true  },
+      { id: 13, title: 'Impedimentos',         priority: 'ALTA',  timer:  5, orderIndex: 2, concluded: true  },
+    ],
+  },
 ];
 let nextMinutesId = 6;
 
@@ -151,15 +194,15 @@ let nextTopicId = 14;
 // ─── Fake Tasks ──────────────────────────────────────────────────────────────
 
 let mockTasks: any[] = [
-  { id: 1,  title: 'Atualizar doc de requisitos',   status: 'PENDENTE',     dueDate: '2026-04-30', assignee: { id: 3, name: 'Maria Silva',      email: 'maria@siger.com'  }, meeting: { id: 1, title: 'Sprint Planning S4'    } },
+  { id: 1,  title: 'Atualizar doc de requisitos',   status: 'NAO_INICIADO', dueDate: '2026-04-30', assignee: { id: 3, name: 'Maria Silva',      email: 'maria@siger.com'  }, meeting: { id: 1, title: 'Sprint Planning S4'    } },
   { id: 2,  title: 'Configurar ambiente Docker',     status: 'EM_ANDAMENTO', dueDate: '2026-04-29', assignee: { id: 4, name: 'Carlos Souza',     email: 'carlos@siger.com' }, meeting: { id: 1, title: 'Sprint Planning S4'    } },
-  { id: 3,  title: 'Implementar exportação PDF',     status: 'PENDENTE',     dueDate: '2026-05-02', assignee: { id: 2, name: 'João Organizador', email: 'joao@siger.com'   }, meeting: { id: 1, title: 'Sprint Planning S4'    } },
+  { id: 3,  title: 'Implementar exportação PDF',     status: 'NAO_INICIADO', dueDate: '2026-05-02', assignee: { id: 2, name: 'João Organizador', email: 'joao@siger.com'   }, meeting: { id: 1, title: 'Sprint Planning S4'    } },
   { id: 4,  title: 'Revisar pendências Projeto X',   status: 'EM_ANDAMENTO', dueDate: '2026-04-28', assignee: { id: 5, name: 'Ana Pereira',      email: 'ana@siger.com'    }, meeting: { id: 2, title: 'Review de Ata — Projeto X' } },
-  { id: 5,  title: 'Levantar próximos passos',       status: 'PENDENTE',     dueDate: '2026-04-29', assignee: { id: 3, name: 'Maria Silva',      email: 'maria@siger.com'  }, meeting: { id: 2, title: 'Review de Ata — Projeto X' } },
-  { id: 6,  title: 'Setup inicial do projeto IA',    status: 'PENDENTE',     dueDate: '2026-05-05', assignee: { id: 2, name: 'João Organizador', email: 'joao@siger.com'   }, meeting: { id: 4, title: 'Kickoff — Módulo de IA'   } },
-  { id: 7,  title: 'Escolher stack de ML',           status: 'PENDENTE',     dueDate: '2026-05-06', assignee: { id: 5, name: 'Ana Pereira',      email: 'ana@siger.com'    }, meeting: { id: 4, title: 'Kickoff — Módulo de IA'   } },
-  { id: 8,  title: 'Documentar retrospectiva S3',    status: 'CONCLUIDA',    dueDate: '2026-04-26', assignee: { id: 2, name: 'João Organizador', email: 'joao@siger.com'   }, meeting: { id: 3, title: 'Retrospectiva S3'          } },
-  { id: 9,  title: 'Aplicar melhorias identificadas',status: 'CONCLUIDA',    dueDate: '2026-04-26', assignee: { id: 3, name: 'Maria Silva',      email: 'maria@siger.com'  }, meeting: { id: 3, title: 'Retrospectiva S3'          } },
+  { id: 5,  title: 'Levantar próximos passos',       status: 'NAO_INICIADO', dueDate: '2026-04-29', assignee: { id: 3, name: 'Maria Silva',      email: 'maria@siger.com'  }, meeting: { id: 2, title: 'Review de Ata — Projeto X' } },
+  { id: 6,  title: 'Setup inicial do projeto IA',    status: 'NAO_INICIADO', dueDate: '2026-05-05', assignee: { id: 2, name: 'João Organizador', email: 'joao@siger.com'   }, meeting: { id: 4, title: 'Kickoff — Módulo de IA'   } },
+  { id: 7,  title: 'Escolher stack de ML',           status: 'NAO_INICIADO', dueDate: '2026-05-06', assignee: { id: 5, name: 'Ana Pereira',      email: 'ana@siger.com'    }, meeting: { id: 4, title: 'Kickoff — Módulo de IA'   } },
+  { id: 8,  title: 'Documentar retrospectiva S3',    status: 'CONCLUIDO',    dueDate: '2026-04-26', assignee: { id: 2, name: 'João Organizador', email: 'joao@siger.com'   }, meeting: { id: 3, title: 'Retrospectiva S3'          } },
+  { id: 9,  title: 'Aplicar melhorias identificadas',status: 'CONCLUIDO',    dueDate: '2026-04-26', assignee: { id: 3, name: 'Maria Silva',      email: 'maria@siger.com'  }, meeting: { id: 3, title: 'Retrospectiva S3'          } },
 ];
 let nextTaskId = 10;
 
@@ -180,10 +223,13 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
     const { email, password } = req.body as any;
     if (!email || !password)
       return of(new HttpResponse({ status: 401, body: { message: 'Credenciais inválidas.' } }));
-    const isAdmin = email.includes('admin');
-    const roles   = isAdmin
+    const user  = mockUsers.find(u => u.email === email);
+    const type  = user?.type ?? 'PARTICIPANTE';
+    const roles = type === 'ADMIN'
       ? ['ROLE_ADMIN', 'ROLE_ORGANIZADOR']
-      : ['ROLE_ORGANIZADOR'];
+      : type === 'ORGANIZADOR'
+        ? ['ROLE_ORGANIZADOR']
+        : ['ROLE_PARTICIPANTE'];
     return respond({ token: buildFakeJwt(email, roles) });
   }
 
@@ -194,6 +240,32 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
     return respond({ message: 'Senha redefinida.' });
 
   // ── Users ───────────────────────────────────────────────────────────────────
+
+  if (method === 'GET' && url === '/user/me') {
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const token = authHeader.replace('Bearer ', '');
+    let email = '';
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      email = payload.sub ?? '';
+    } catch { /**/ }
+    const me = mockUsers.find(u => u.email === email) ?? mockUsers[0];
+    return respond(me);
+  }
+
+  if (method === 'PUT' && url === '/user/me') {
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const token = authHeader.replace('Bearer ', '');
+    let email = '';
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      email = payload.sub ?? '';
+    } catch { /**/ }
+    const idx = mockUsers.findIndex(u => u.email === email);
+    const target = idx !== -1 ? idx : 0;
+    mockUsers[target] = { ...mockUsers[target], ...(req.body as any) };
+    return respond(mockUsers[target]);
+  }
 
   if (method === 'GET' && url === '/user/findAll')
     return respond([...mockUsers]);
@@ -235,18 +307,32 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
     return meeting ? respond(meeting) : respond({ message: 'Não encontrado' }, 404);
   }
 
-  if (method === 'POST' && url === '/meeting') {
+  if (method === 'POST' && url === '/meeting/create') {
     const body = req.body as any;
-    const novo = { ...body, id: nextMeetingId++, status: body.status ?? 'NAO_INICIADO' };
+    const user = mockUsers.find(u => u.id === body.userId);
+    const novo = {
+      ...body,
+      id: nextMeetingId++,
+      status: 'NAO_INICIADO',
+      organizerId: body.userId,
+      organizerName: user?.name ?? '',
+    };
     mockMeetings.push(novo);
     return respond(novo, 201);
   }
 
-  if (method === 'PUT' && url.match(/^\/meeting\/\d+$/)) {
+  if (method === 'PUT' && url.match(/^\/meeting\/update\/\d+$/)) {
     const id  = Number(url.split('/').pop());
     const idx = mockMeetings.findIndex(m => m.id === id);
     if (idx !== -1) mockMeetings[idx] = { ...mockMeetings[idx], ...(req.body as any), id };
     return respond(mockMeetings[idx] ?? req.body);
+  }
+
+  if (method === 'PATCH' && url.match(/^\/meeting\/cancel\/\d+$/)) {
+    const id  = Number(url.split('/').pop());
+    const idx = mockMeetings.findIndex(m => m.id === id);
+    if (idx !== -1) mockMeetings[idx] = { ...mockMeetings[idx], status: 'CANCELADO' };
+    return respond(mockMeetings[idx] ?? {});
   }
 
   if (method === 'DELETE' && url.match(/^\/meeting\/\d+$/)) {
@@ -266,9 +352,26 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
     return p ? respond(p) : respond({ message: 'Não encontrado' }, 404);
   }
 
-  if (method === 'POST' && url === '/participant') {
+  if (method === 'GET' && url.match(/^\/participant\/meeting\/\d+$/)) {
+    const meetingId = Number(url.split('/').pop());
+    return respond(mockParticipants.filter(p => p.meeting.id === meetingId));
+  }
+
+  if (method === 'POST' && url === '/participant/add') {
     const body = req.body as any;
-    const novo = { ...body, id: nextParticipantId++ };
+    const user = mockUsers.find(u => u.id === body.userId);
+    const novo = {
+      id: nextParticipantId++,
+      role: body.role,
+      participation: 'SIM',
+      userId: body.userId,
+      userName: user?.name ?? '',
+      userEmail: user?.email ?? '',
+      meetingId: body.meetingId,
+      meetingTitle: mockMeetings.find(m => m.id === body.meetingId)?.title ?? '',
+      user: { id: body.userId, name: user?.name ?? '', email: user?.email ?? '' },
+      meeting: { id: body.meetingId },
+    };
     mockParticipants.push(novo);
     return respond(novo, 201);
   }
@@ -291,6 +394,12 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
   if (method === 'GET' && url === '/meeting/minutes/findAll')
     return respond([...mockMinutes]);
 
+  if (method === 'GET' && url.match(/^\/meeting\/minutes\/findCurrent\/\d+$/)) {
+    const meetingId = Number(url.split('/').pop());
+    const min = mockMinutes.find(x => x.meeting?.id === meetingId || x.meetingId === meetingId);
+    return min ? respond(min) : respond(null, 404);
+  }
+
   if (method === 'GET' && url.match(/^\/meeting\/minutes\/\d+$/)) {
     const id  = Number(url.split('/').pop());
     const min = mockMinutes.find(x => x.id === id);
@@ -299,7 +408,11 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
 
   if (method === 'POST' && url === '/meeting/minutes') {
     const body = req.body as any;
-    const novo = { ...body, id: nextMinutesId++ };
+    const novo = {
+      ...body,
+      id: nextMinutesId++,
+      meeting: { id: body.meetingId },
+    };
     mockMinutes.push(novo);
     return respond(novo, 201);
   }
@@ -378,6 +491,14 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
     mockTasks = mockTasks.filter(x => x.id !== id);
     return respond(null, 204);
   }
+
+  // ── Dashboard ─────────────────────────────────────────────────────────────────
+
+  if (method === 'GET' && url === '/dashboard/attendance/meeting/general')
+    return respond(87.5);
+
+  if (method === 'GET' && url === '/dashboard/average-time')
+    return respond(52.0);
 
   // ── Logs ─────────────────────────────────────────────────────────────────────
 

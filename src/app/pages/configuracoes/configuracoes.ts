@@ -86,23 +86,15 @@ export class Configuracoes implements OnInit {
   async loadProfile(): Promise<void> {
     this.loadingProfile.set(true);
     try {
-      // Tenta carregar usuários e encontrar o próprio por email (funciona para ADMIN)
-      const myEmail = this.auth.getNomeUsuario();
-      const users = await this.userService.listar();
-      const me = users.find(u => u.email === myEmail) ?? null;
+      const me = await this.userService.buscarMe();
       this.currentUser.set(me);
-      if (me) {
-        this.profileForm.patchValue({
-          name:  me.name  ?? '',
-          email: me.email ?? '',
-          cpf:   me.cpf   ?? '',
-          phone: me.phone ?? '',
-        });
-      } else {
-        this.profileForm.patchValue({ email: myEmail });
-      }
+      this.profileForm.patchValue({
+        name:  me.name  ?? '',
+        email: me.email ?? '',
+        cpf:   me.cpf   ?? '',
+        phone: me.phone ?? '',
+      });
     } catch {
-      // Sem permissão - mostra apenas o que temos do JWT
       this.profileForm.patchValue({ email: this.auth.getNomeUsuario() });
     } finally {
       this.loadingProfile.set(false);
@@ -110,15 +102,13 @@ export class Configuracoes implements OnInit {
   }
 
   async saveProfile(): Promise<void> {
-    const user = this.currentUser();
-    if (!user || this.profileForm.invalid) { this.profileForm.markAllAsTouched(); return; }
+    if (this.profileForm.invalid) { this.profileForm.markAllAsTouched(); return; }
     this.savingProfile.set(true);
     try {
-      const updated = await this.userService.alterar({
-        ...user,
-        name:  this.profileForm.get('name')?.value  ?? user.name,
-        phone: this.profileForm.get('phone')?.value ?? user.phone,
-      } as User);
+      const updated = await this.userService.alterarMe({
+        name:  this.profileForm.get('name')?.value  ?? '',
+        phone: this.profileForm.get('phone')?.value ?? undefined,
+      });
       this.currentUser.set(updated);
       this.notify.success('Perfil atualizado com sucesso.');
     } catch {

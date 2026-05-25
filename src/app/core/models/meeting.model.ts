@@ -8,13 +8,9 @@ export interface Meeting {
   meetingDate: string;
   duration: number;
   status?: MeetingStatus;
-  // resposta do GET (entidade bruta)
-  user?: { id: number; name?: string; email?: string };
-  // resposta do POST/PUT (MeetingResponseDTO)
+  // MeetingResponseDTO (POST/PUT/GET /findAll / GET /{id} via controller)
   organizerId?: number;
   organizerName?: string;
-  // campo normalizado — preenchido pelo service em ambos os casos
-  organizer?: { id: number; name?: string; email?: string };
   createdAt?: string;
   updatedAt?: string;
 }

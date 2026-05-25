@@ -1,9 +1,10 @@
 import { Injectable, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { jwtDecode } from 'jwt-decode';
 import { environment } from '../../../environment/environment';
 import { firstValueFrom } from 'rxjs';
+import { SKIP_ERROR_NAVIGATION } from '../interceptors/error.interceptor';
 
 export interface JwtPayload {
   sub: string;
@@ -31,20 +32,22 @@ export class AuthService {
 
   async login(credentials: LoginRequest): Promise<void> {
     const response = await firstValueFrom(
-      this.http.post<{ token: string }>(`${environment.apiUrl}/auth/login`, credentials)
+      this.http.post<{ token: string }>(`${environment.apiUrl}/auth/login`, credentials, {
+        context: new HttpContext().set(SKIP_ERROR_NAVIGATION, true),
+      })
     );
     this.armazenarToken(response.token);
   }
 
   async forgotPassword(email: string): Promise<void> {
     await firstValueFrom(
-      this.http.post(`${environment.apiUrl}/auth/forgot-password`, { email })
+      this.http.post(`${environment.apiUrl}/auth/forgot-password`, { email }, { responseType: 'text' })
     );
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
     await firstValueFrom(
-      this.http.post(`${environment.apiUrl}/auth/reset-password`, { token, newPassword })
+      this.http.post(`${environment.apiUrl}/auth/reset-password`, { token, newPassword }, { responseType: 'text' })
     );
   }
 

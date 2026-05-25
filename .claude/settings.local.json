@@ -28,7 +28,11 @@
       "Bash(timeout 60 bash *)",
       "PowerShell(Get-Command *)",
       "PowerShell(Start-Process -FilePath \"cmd.exe\" -ArgumentList \"/c\", \"cd /d `\"C:\\\\Users\\\\Julio Cesar\\\\Documents\\\\SIGER\\\\siger-api`\" && mvnw.cmd spring-boot:run > `\"C:\\\\Users\\\\Julio Cesar\\\\Documents\\\\SIGER\\\\backend.log`\" 2>&1\" -WindowStyle Hidden)",
-      "Bash(Get-Random)"
+      "Bash(Get-Random)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Julio Cesar\\\\Documents\\\\SIGER\\\\siger\\\\src\" -Recurse -Directory)",
+      "Bash(Select-Object FullName)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(Stop-Process *)"
     ]
   }
 }

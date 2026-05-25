@@ -5,6 +5,9 @@ export interface MeetingMinutes {
   objectives: string;
   notes: string;
   decision: string;
-  meeting: { id: number };
+  version?: number;
+  isCurrent?: boolean;
+  createdAt?: string;
+  meeting?: { id: number };
   topics?: Topic[];
 }

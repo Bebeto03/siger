@@ -15,6 +15,7 @@ export class Enums {
     { label: 'Não iniciado',  value: 'NAO_INICIADO'  },
     { label: 'Em andamento',  value: 'EM_ANDAMENTO'  },
     { label: 'Concluído',     value: 'CONCLUIDO'     },
+    { label: 'Cancelado',     value: 'CANCELADO'     },
   ];
 
   static topicPriority = [
