@@ -3,20 +3,24 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { NotificationService } from '../services/notification.service';
+import { AuthService } from '../services/auth.service';
 
 export const SKIP_ERROR_NAVIGATION = new HttpContextToken<boolean>(() => false);
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const notify = inject(NotificationService);
+  const auth = inject(AuthService);
   const skipNavigation = req.context.get(SKIP_ERROR_NAVIGATION);
 
   return next(req).pipe(
     catchError((err: HttpErrorResponse) => {
       switch (err.status) {
         case 401:
-          localStorage.clear();
-          router.navigate(['/login']);
+          // Não acionar logout recursivo se o próprio /auth/refresh falhou
+          if (!req.url.includes('/auth/refresh')) {
+            auth.logout();
+          }
           break;
         case 403:
           if (!skipNavigation) router.navigate(['/acesso-negado']);
