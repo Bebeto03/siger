@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ToastComponent } from '../../../shared/components/toast/toast';
@@ -39,6 +39,7 @@ export class ForgotPassword {
   private fb     = inject(FormBuilder);
   private auth   = inject(AuthService);
   private notify = inject(NotificationService);
+  private router = inject(Router);
 
   loading = signal(false);
   form = this.fb.group({ email: ['', [Validators.required, Validators.email]] });
@@ -49,7 +50,7 @@ export class ForgotPassword {
     try {
       await this.auth.forgotPassword(this.form.value.email!);
       this.notify.success('Link enviado! Verifique seu e-mail.');
-      this.form.reset();
+      this.router.navigate(['/login']);
     } catch {
       this.notify.error('Não foi possível enviar o e-mail.');
     } finally {
