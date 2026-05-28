@@ -177,13 +177,9 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
     if (!meetingId) return;
     this.savingMinutes.set(true);
     try {
-      const payload = { meetingId, ...this.minutesForm };
-      if (this.minutes()?.id) {
-        await this.minutesService.editar(this.minutes()!.id!, payload);
-      } else {
-        const created = await this.minutesService.criar(payload, { skipNavigation: true });
-        this.minutes.set(created);
-      }
+      const payload = { meeting: { id: meetingId }, ...this.minutesForm };
+      const created = await this.minutesService.criar(payload, { skipNavigation: true });
+      this.minutes.set(created);
       const now   = new Date();
       const label = `${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
       this.minutesHistory.update(h => [{ author: this.auth.getNomeUsuario() || 'Você', date: label }, ...h]);
