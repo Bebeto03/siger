@@ -7,8 +7,8 @@ import { Participant, ParticipantRole } from '../models/participant.model';
 export type { Participant } from '../models/participant.model';
 
 export interface ParticipantAddDTO {
-  userId: number;
-  meetingId: number;
+  user: { id: number };
+  meeting: { id: number };
   role: ParticipantRole;
 }
 
@@ -48,7 +48,7 @@ export class ParticipantService {
   }
 
   criar(data: ParticipantAddDTO): Promise<Participant> {
-    return firstValueFrom(this.http.post<any>(`${this.api}/add`, data))
+    return firstValueFrom(this.http.post<any>(`${this.api}`, data))
       .then(p => this.map(p));
   }
 

@@ -8,7 +8,7 @@ import { SKIP_ERROR_NAVIGATION } from '../interceptors/error.interceptor';
 export type { MeetingMinutes } from '../models/meeting-minutes.model';
 
 export interface MeetingMinutesDTO {
-  meetingId: number;
+  meeting: { id: number };
   objectives: string;
   notes: string;
   decision: string;

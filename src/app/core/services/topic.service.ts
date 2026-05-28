@@ -7,8 +7,8 @@ import { Topic, TopicPriority } from '../models/topic.model';
 export type { Topic } from '../models/topic.model';
 
 export interface TopicDTO {
-  meetingMinutesId: number;
-  participantId?: number;
+  meetingMinutes: { id: number };
+  participant?: { id: number };
   title: string;
   timer?: number;
   orderIndex: number;
