@@ -58,6 +58,10 @@ export const routes: Routes = [
         path: 'configuracoes',
         loadComponent: () => import('./pages/configuracoes/configuracoes').then(m => m.Configuracoes),
       },
+      {
+        path: 'disponibilidade',
+        loadComponent: () => import('./pages/disponibilidade/disponibilidade').then(m => m.Disponibilidade),
+      },
     ],
   },
   {
