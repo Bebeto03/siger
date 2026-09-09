@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpContext } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environment/environment';
-import { MeetingMinutes, MinutesSummaryRequest, MinutesSummaryResponse } from '../models/meeting-minutes.model';
+import { MeetingMinutes, MinutesSummary} from '../models/meeting-minutes.model';
 import { SKIP_ERROR_NAVIGATION } from '../interceptors/error.interceptor';
 
 export type { MeetingMinutes } from '../models/meeting-minutes.model';
@@ -51,8 +51,8 @@ export class MeetingMinutesService {
     return firstValueFrom(this.http.delete<void>(`${this.api}/${id}`));
   }
 
-  summaryAi(body: MinutesSummaryRequest): Promise<MinutesSummaryResponse> {
-  return firstValueFrom(this.http.post<MinutesSummaryResponse>(`${this.api}/summary/ai`, body));
+  summaryAi(body: MinutesSummary): Promise<MinutesSummary> {
+  return firstValueFrom(this.http.post<MinutesSummary>(`${this.api}/summary/ai`, body));
 }
 
   

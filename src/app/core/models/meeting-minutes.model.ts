@@ -12,13 +12,9 @@ export interface MeetingMinutes {
   topics?: Topic[];
 }
 
-export interface MinutesSummaryRequest {
+export interface MinutesSummary {
   objectives: string;
   notes: string;
   decision: string;
 }
 
-export interface MinutesSummaryResponse {
-  summary: string;
-  // outros campos que sua API realmente retorna
-}

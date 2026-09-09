@@ -64,7 +64,7 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
 
   activeTab = signal<ActiveTab>('info');
 
-  minutesForm = { objectives: '', notes: '', decision: '' , summary: ''};
+  minutesForm = { objectives: '', notes: '', decision: ''};
   minutesHistory = signal<{ author: string; date: string }[]>([]);
 
   tasks        = signal<Task[]>([]);
@@ -126,7 +126,7 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
       const min = await this.minutesService.buscarPorReuniao(meetingId);
       this.minutes.set(min);
       if (min) {
-        this.minutesForm = { objectives: min.objectives, notes: min.notes, decision: min.decision, summary: ''};
+        this.minutesForm = { objectives: min.objectives, notes: min.notes, decision: min.decision};
         this.topics.set((min.topics ?? []).sort((a, b) => a.orderIndex - b.orderIndex));
       }
     } catch {
@@ -264,7 +264,7 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
 
     try {
       const result = await this.minutesService.summaryAi({ objectives, notes, decision });
-      this.minutesForm.summary = result.summary;
+      this.minutesForm = result;
     } catch (err) {
       console.error('Falha ao gerar resumo com IA', err);
       // aqui pode entrar um toast/snackbar para avisar o usuário
