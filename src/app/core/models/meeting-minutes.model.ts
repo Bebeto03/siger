@@ -11,3 +11,14 @@ export interface MeetingMinutes {
   meeting?: { id: number };
   topics?: Topic[];
 }
+
+export interface MinutesSummaryRequest {
+  objectives: string;
+  notes: string;
+  decision: string;
+}
+
+export interface MinutesSummaryResponse {
+  summary: string;
+  // outros campos que sua API realmente retorna
+}
