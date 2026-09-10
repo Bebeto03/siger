@@ -11,3 +11,10 @@ export interface MeetingMinutes {
   meeting?: { id: number };
   topics?: Topic[];
 }
+
+export interface MinutesSummary {
+  objectives: string;
+  notes: string;
+  decision: string;
+}
+

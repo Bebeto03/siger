@@ -64,7 +64,7 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
 
   activeTab = signal<ActiveTab>('info');
 
-  minutesForm = { objectives: '', notes: '', decision: '' };
+  minutesForm = { objectives: '', notes: '', decision: ''};
   minutesHistory = signal<{ author: string; date: string }[]>([]);
 
   tasks        = signal<Task[]>([]);
@@ -126,7 +126,7 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
       const min = await this.minutesService.buscarPorReuniao(meetingId);
       this.minutes.set(min);
       if (min) {
-        this.minutesForm = { objectives: min.objectives, notes: min.notes, decision: min.decision };
+        this.minutesForm = { objectives: min.objectives, notes: min.notes, decision: min.decision};
         this.topics.set((min.topics ?? []).sort((a, b) => a.orderIndex - b.orderIndex));
       }
     } catch {
@@ -258,8 +258,17 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
     window.open(`${environment.apiUrl}/pdf/meeting/${id}`, '_blank');
   }
 
-  onComingSoon(feature: string): void {
-    this.notify.info(`${feature} estará disponível em breve.`);
+  async summaryAi(): Promise<void> {
+    const { objectives, notes, decision } = this.minutesForm;
+    if (!objectives || !notes || !decision) return;
+
+    try {
+      const result = await this.minutesService.summaryAi({ objectives, notes, decision });
+      this.minutesForm = result;
+    } catch (err) {
+      console.error('Falha ao gerar resumo com IA', err);
+      // aqui pode entrar um toast/snackbar para avisar o usuário
+    }
   }
 
   // ── Timer ───────────────────────────────────────────────────────────────────
