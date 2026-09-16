@@ -298,8 +298,15 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
 
   // ── Meetings ────────────────────────────────────────────────────────────────
 
+  // Como na API real: a entidade Meeting vem com `participants[]` embutido
+  // (Participant.meeting é WRITE_ONLY no backend, por isso sem o campo `meeting`).
   if (method === 'GET' && url === '/meeting/findAll')
-    return respond([...mockMeetings]);
+    return respond(mockMeetings.map(m => ({
+      ...m,
+      participants: mockParticipants
+        .filter(p => p.meeting.id === m.id)
+        .map(({ meeting: _meeting, ...p }) => p),
+    })));
 
   if (method === 'GET' && url.match(/^\/meeting\/\d+$/)) {
     const id      = Number(url.split('/').pop());
