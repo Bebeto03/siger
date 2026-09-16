@@ -1,24 +1,43 @@
-import { Component, inject, signal, OnInit, computed } from '@angular/core';
+import { Component, inject, OnInit, computed } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
-import { MeetingService } from '../../core/services/meeting.service';
-import { TaskService } from '../../core/services/task.service';
-import { ParticipantService } from '../../core/services/participant.service';
-import { DashboardService } from '../../core/services/dashboard.service';
+import { Store } from '@ngrx/store';
+import { ChartData, ChartOptions } from 'chart.js';
 import { AuthService } from '../../core/services/auth.service';
-import { Meeting } from '../../core/models/meeting.model';
-import { Task } from '../../core/models/task.model';
+import { ChartComponent } from '../../shared/components/chart/chart';
+import { CHART_SERIES, withAlpha } from '../../shared/components/chart/chart-theme';
+import {
+  IndicadoresActions,
+  selectAttendanceGeneral,
+  selectAverageTime,
+  selectConfirmacoesPendentesPorReuniao,
+  selectDuracaoMediaLocal,
+  selectDuracaoMediaPorMes,
+  selectLoaded,
+  selectLoading,
+  selectParticipantesPorReuniao,
+  selectProximasReunioes,
+  selectReunioesComConfirmacaoPendente,
+  selectReunioesEsteMes,
+  selectReunioesPorMes,
+  selectTarefasPendentes,
+  selectTarefasRecentes,
+} from '../../store/indicadores';
+
+/** Variação percentual entre o mês atual e o anterior; null quando não dá para comparar. */
+function variacaoPct(atual: number | null, anterior: number | null): number | null {
+  if (atual == null || anterior == null || anterior === 0) return null;
+  return Math.round(((atual - anterior) / anterior) * 100);
+}
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [DecimalPipe],
+  imports: [DecimalPipe, ChartComponent],
   styles: [`
     .stat-card { transition: border-color 0.15s, box-shadow 0.15s; }
     .meeting-card { transition: border-color 0.15s, box-shadow 0.15s; cursor: pointer; }
     .meeting-card:hover { border-color: var(--color-primary) !important; box-shadow: 0 0 0 1px rgba(6,182,212,0.15); }
-    .chart-bar { transition: background 0.2s; border-radius: 4px 4px 0 0; }
-    .chart-bar:hover { background: var(--color-primary) !important; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .spinner { animation: spin 0.8s linear infinite; }
   `],
@@ -26,112 +45,74 @@ import { Task } from '../../core/models/task.model';
 })
 export class Dashboard implements OnInit {
   readonly router = inject(Router);
-  private meetingService     = inject(MeetingService);
-  private taskService        = inject(TaskService);
-  private participantService = inject(ParticipantService);
-  private dashboardService   = inject(DashboardService);
-  private auth               = inject(AuthService);
+  private store   = inject(Store);
+  private auth    = inject(AuthService);
 
-  meetings                = signal<Meeting[]>([]);
-  tasks                   = signal<Task[]>([]);
-  participantCount        = signal<Record<number, number>>({});
-  pendingConfirmationCount = signal<Record<number, number>>({});
-  attendanceRate          = signal<number | null>(null);
-  loading                 = signal(true);
+  // ─── Estado vindo do store (NgRx) ─────────────────────────────────────────
+  loading = this.store.selectSignal(selectLoading);
+  loaded  = this.store.selectSignal(selectLoaded);
+
+  meetingsThisMonth        = this.store.selectSignal(selectReunioesEsteMes);
+  attendanceRate           = this.store.selectSignal(selectAttendanceGeneral);
+  pendingTasks             = this.store.selectSignal(selectTarefasPendentes);
+  upcomingMeetings         = this.store.selectSignal(selectProximasReunioes);
+  recentTasks              = this.store.selectSignal(selectTarefasRecentes);
+  participantCount         = this.store.selectSignal(selectParticipantesPorReuniao);
+  pendingConfirmationCount = this.store.selectSignal(selectConfirmacoesPendentesPorReuniao);
+  pendingConfirmations     = this.store.selectSignal(selectReunioesComConfirmacaoPendente);
+
+  private averageBackend = this.store.selectSignal(selectAverageTime);
+  private averageLocal   = this.store.selectSignal(selectDuracaoMediaLocal);
+  private reunioesPorMes = this.store.selectSignal(selectReunioesPorMes);
+  private duracaoPorMes  = this.store.selectSignal(selectDuracaoMediaPorMes);
 
   podecriarReuniao = computed(() => this.auth.temQualquerPermissao(['ROLE_ADMIN', 'ROLE_ORGANIZADOR']));
 
-  readonly monthLabels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-
-  chartBars = computed(() => {
-    const now = new Date();
-    const counts = new Array(12).fill(0);
-    for (const m of this.meetings()) {
-      const month = new Date(m.meetingDate).getMonth();
-      counts[month]++;
-    }
-    const maxCount = Math.max(...counts, 1);
-    return this.monthLabels.map((label, i) => ({
-      label,
-      count: counts[i],
-      pct: Math.round((counts[i] / maxCount) * 100),
-      highlight: i === now.getMonth(),
-    }));
-  });
-
-  meetingsThisMonth = computed(() => {
-    const now = new Date();
-    return this.meetings().filter(m => {
-      const d = new Date(m.meetingDate);
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    }).length;
-  });
-
-  meetingsThisMonthChange = computed(() => {
-    const count = this.meetingsThisMonth();
-    return count > 0 ? 12 : 0;
-  });
-
   avgDuration = computed(() => {
-    const all = this.meetings().filter(m => m.duration);
-    if (!all.length) return 0;
-    return Math.round(all.reduce((s, m) => s + (m.duration ?? 0), 0) / all.length);
+    const b = this.averageBackend();
+    return b != null ? Math.round(b) : (this.averageLocal() ?? 0);
   });
 
-  pendingTasks = computed(() =>
-    this.tasks().filter(t => t.status === 'NAO_INICIADO').length
-  );
-
-  upcomingMeetings = computed(() =>
-    this.meetings()
-      .filter(m => m.status !== 'CONCLUIDO')
-      .sort((a, b) => new Date(a.meetingDate).getTime() - new Date(b.meetingDate).getTime())
-      .slice(0, 4)
-  );
-
-  recentTasks = computed(() =>
-    this.tasks()
-      .filter(t => t.status !== 'CONCLUIDO')
-      .slice(0, 3)
-  );
-
-  pendingConfirmations = computed(() => {
-    const pendingMap = this.pendingConfirmationCount();
-    return this.meetings()
-      .filter(m => m.status === 'NAO_INICIADO' && (pendingMap[m.id!] ?? 0) > 0)
-      .sort((a, b) => new Date(a.meetingDate).getTime() - new Date(b.meetingDate).getTime())
-      .slice(0, 3);
+  // Variação real em relação ao mês anterior (substitui os "+12%" / "-8%" fixos)
+  meetingsThisMonthChange = computed(() => {
+    const s = this.reunioesPorMes();
+    const n = s.realizadas.length;
+    return variacaoPct(s.realizadas[n - 1], s.realizadas[n - 2]);
   });
 
-  async ngOnInit(): Promise<void> {
-    try {
-      const [meetings, tasks, participants] = await Promise.all([
-        this.meetingService.listar(),
-        this.taskService.listar(),
-        this.participantService.listar().catch(() => []),
-      ]);
-      this.meetings.set(meetings);
-      this.tasks.set(tasks);
-      const countMap: Record<number, number> = {};
-      const pendingMap: Record<number, number> = {};
-      for (const p of participants) {
-        const mid = p.meeting.id;
-        countMap[mid] = (countMap[mid] ?? 0) + 1;
-        if (!p.participation) {
-          pendingMap[mid] = (pendingMap[mid] ?? 0) + 1;
-        }
-      }
-      this.participantCount.set(countMap);
-      this.pendingConfirmationCount.set(pendingMap);
-    } catch {
-      // dashboard degrades gracefully
-    } finally {
-      this.loading.set(false);
-    }
-    // attendance rate carrega de forma não-bloqueante
-    this.dashboardService.attendanceGeneral()
-      .then(r => this.attendanceRate.set(r != null && isFinite(r) ? r : null))
-      .catch(() => {});
+  avgDurationChange = computed(() => {
+    const s = this.duracaoPorMes();
+    const n = s.minutos.length;
+    return variacaoPct(s.minutos[n - 1], s.minutos[n - 2]);
+  });
+
+  // ─── Gráfico: reuniões por mês (barras, Chart.js) ─────────────────────────
+  chartData = computed<ChartData<'bar'>>(() => {
+    const s = this.reunioesPorMes();
+    const ultimo = s.realizadas.length - 1;
+    return {
+      labels: s.labels,
+      datasets: [{
+        label: 'Reuniões',
+        data: s.realizadas,
+        // mês atual em destaque, demais com opacidade reduzida
+        backgroundColor: s.realizadas.map((_, i) =>
+          i === ultimo ? CHART_SERIES.primary : withAlpha(CHART_SERIES.primary, 0.45)),
+        hoverBackgroundColor: CHART_SERIES.primary,
+        borderRadius: 4,
+        borderSkipped: 'bottom',
+        maxBarThickness: 32,
+      }],
+    };
+  });
+
+  readonly chartOptions: ChartOptions<'bar'> = {
+    plugins: { legend: { display: false } },
+  };
+
+  ngOnInit(): void {
+    // O effect faz exhaustMap: se Relatórios já disparou, esta chamada é ignorada
+    this.store.dispatch(IndicadoresActions.carregar());
   }
 
   formatDate(dateStr: string): string {
