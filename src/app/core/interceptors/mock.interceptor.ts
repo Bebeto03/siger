@@ -206,6 +206,21 @@ let mockTasks: any[] = [
 ];
 let nextTaskId = 10;
 
+// ─── Fake Notifications ──────────────────────────────────────────────────────
+
+const minutosAtras = (min: number): string => {
+  const d = new Date(Date.now() - min * 60_000);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+};
+
+let mockNotifications: any[] = [
+  { id: 4, meetingId: 1, type: 'ORGANIZER_NO_CONFIRMATION', title: 'Nenhuma presença confirmada', message: '"Sprint Planning S4" - 28/04/2026 às 09:00. Começa em 1 hora e nenhum participante confirmou presença (3 sem resposta, 1 recusaram).', read: false, createdAt: minutosAtras(2) },
+  { id: 1, meetingId: 1, type: 'MEETING_REMINDER', title: 'Reunião em 1 hora',   message: '"Sprint Planning S4" - 28/04/2026 às 09:00. Você ainda não confirmou sua presença.', read: false, createdAt: minutosAtras(5) },
+  { id: 2, meetingId: 4, type: 'MEETING_REMINDER', title: 'Reunião em 24 horas', message: '"Kickoff — Módulo de IA" - 30/04/2026 às 10:00. Sua presença está confirmada.',      read: false, createdAt: minutosAtras(180) },
+  { id: 3, meetingId: 2, type: 'MEETING_REMINDER', title: 'Reunião em 24 horas', message: '"Review de Ata — Projeto X" - 28/04/2026 às 14:00. Sua presença está confirmada.',   read: true,  createdAt: minutosAtras(1500) },
+];
+
 // ─── Interceptor ─────────────────────────────────────────────────────────────
 
 export const mockInterceptor: HttpInterceptorFn = (req, next) => {
@@ -497,6 +512,26 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
     const id = Number(url.split('/').pop());
     mockTasks = mockTasks.filter(x => x.id !== id);
     return respond(null, 204);
+  }
+
+  // ── Notifications ────────────────────────────────────────────────────────────
+
+  if (method === 'GET' && url === '/notification')
+    return respond([...mockNotifications]);
+
+  if (method === 'GET' && url === '/notification/unread-count')
+    return respond({ count: mockNotifications.filter(n => !n.read).length });
+
+  if (method === 'PATCH' && url === '/notification/read-all') {
+    mockNotifications = mockNotifications.map(n => ({ ...n, read: true }));
+    return respond(null, 204);
+  }
+
+  if (method === 'PATCH' && url.match(/^\/notification\/\d+\/read$/)) {
+    const id = Number(url.split('/')[2]);
+    mockNotifications = mockNotifications.map(n => (n.id === id ? { ...n, read: true } : n));
+    const updated = mockNotifications.find(n => n.id === id);
+    return updated ? respond(updated) : respond({ message: 'Não encontrado' }, 404);
   }
 
   // ── Dashboard ─────────────────────────────────────────────────────────────────
