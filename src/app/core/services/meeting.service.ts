@@ -34,6 +34,10 @@ export class MeetingService {
     return firstValueFrom(this.http.get<Meeting[]>(`${this.api}/findAll`));
   }
 
+  listarMinhasReunioes(): Promise<Meeting[]> {
+    return firstValueFrom(this.http.get<Meeting[]>(`${this.api}/my`));
+  }
+
   buscar(id: number): Promise<Meeting> {
     return firstValueFrom(this.http.get<Meeting>(`${this.api}/${id}`));
   }
