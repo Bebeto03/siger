@@ -84,6 +84,11 @@
                         [style.color]="statusColor(m.status!)">
                     {{ statusLabel(m.status!) }}
                     </span>
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                        [style.background]="statusBgParticipation(m.participation?.participation!)"
+                        [style.color]="statusColorParticipation(m.participation?.participation!)">
+                    {{ statusLabelParticipation(m.participation?.participation!) }}
+                    </span>
                 </div>
                 <p class="text-xs mt-1 truncate" style="color: var(--color-text-muted)">{{ m.description }}</p>
                 <div class="flex gap-4 mt-2 flex-wrap">
