@@ -93,7 +93,11 @@ export class ReuniaoList implements OnInit {
   async load(): Promise<void> {
     this.loading.set(true);
     try {
-      this.meetings.set(await this.meetingService.listar());
+      if(this.auth.temPermissao('ROLE_ADMIN')){
+        this.meetings.set(await this.meetingService.listar());
+      }else{
+        this.meetings.set(await this.meetingService.listarMinhasReunioes())
+      }
     } catch {
       this.notify.error('Erro ao carregar reuniões.');
     } finally {

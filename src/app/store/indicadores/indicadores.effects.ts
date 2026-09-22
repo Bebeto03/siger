@@ -20,7 +20,7 @@ export class IndicadoresEffects {
       ofType(IndicadoresActions.carregar),
       exhaustMap(() =>
         forkJoin({
-          meetings:          from(this.meetingService.listar()),
+          meetings:          from(this.meetingService.listarMinhasReunioes()),
           // tarefas e KPIs do backend degradam para vazio/null sem derrubar a carga
           tasks:             from(this.taskService.listar()).pipe(catchError(() => of([]))),
           attendanceGeneral: from(this.dashboardService.attendanceGeneral()),
