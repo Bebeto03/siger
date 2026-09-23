@@ -60,4 +60,9 @@ export class ParticipantService {
   excluir(id: number): Promise<void> {
     return firstValueFrom(this.http.delete<void>(`${this.api}/${id}`));
   }
+
+  registrarPresenca(meetingId: number): Promise<Participant> {
+    return firstValueFrom(this.http.get<any>(`${this.api}/confirmated/${meetingId}`))
+      .then(p => this.map(p));
+  }
 }

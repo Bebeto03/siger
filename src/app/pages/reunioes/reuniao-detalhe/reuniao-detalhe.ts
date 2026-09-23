@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { environment } from '../../../../environment/environment';
 import { FormsModule } from '@angular/forms';
@@ -84,6 +84,8 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
     { id: 'minutes'      as ActiveTab, label: 'Ata'           },
     { id: 'tasks'        as ActiveTab, label: 'Tarefas'       },
   ];
+
+  podecriarReuniao = computed(() => this.auth.temQualquerPermissao(['ROLE_ADMIN', 'ROLE_ORGANIZADOR']));
 
   async ngOnInit(): Promise<void> {
     const id = Number(this.route.snapshot.paramMap.get('id'));

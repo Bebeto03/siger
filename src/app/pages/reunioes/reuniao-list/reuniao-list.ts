@@ -7,6 +7,8 @@ import { NotificationService } from '../../../core/services/notification.service
 import { LogService } from '../../../core/services/log.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ToastComponent } from '../../../shared/components/toast/toast';
+import { ParticipantParticipation } from '../../../core/models/participant.model';
+import { ParticipantService } from '../../../core/services/participant.service';
 
 @Component({
   selector: 'app-reuniao-list',
@@ -25,6 +27,7 @@ import { ToastComponent } from '../../../shared/components/toast/toast';
 })
 export class ReuniaoList implements OnInit {
   private meetingService = inject(MeetingService);
+  private participantService = inject(ParticipantService);
   private notify         = inject(NotificationService);
   private logService     = inject(LogService);
   private auth           = inject(AuthService);
@@ -180,4 +183,57 @@ export class ReuniaoList implements OnInit {
     };
     return map[status] ?? 'rgba(148,163,184,0.1)';
   }
+  
+  statusLabelParticipation(status: ParticipantParticipation): string {
+    const map: Record<ParticipantParticipation, string> = {
+      NAO_PARTICIPOU: 'Não participou',
+      PARTICIPOU: 'Participou',
+      SIM:    'Sim',
+      NAO:    'Não',
+      TALVEZ:    'Talvez',
+    }
+    return map[status] ?? status;
+  }
+
+  statusColorParticipation(status: ParticipantParticipation): string {
+    const map: Record<ParticipantParticipation, string> = {
+      NAO_PARTICIPOU: 'var(--color-danger)',
+      PARTICIPOU: 'var(--color-success)',
+      SIM:    'var(--color-primary)',
+      NAO:    'var(--color-warning)',
+      TALVEZ:   'var(--color-warning)',
+    }
+    return map[status] ?? 'var(--color-text-secondary)';
+  }
+
+  statusBgParticipation(status: ParticipantParticipation): string {
+    const map: Record<ParticipantParticipation, string> = {
+      NAO_PARTICIPOU: 'rgba(239,68,68,0.15)',
+      PARTICIPOU: 'rgba(16,185,129,0.15)',
+      SIM:    'rgba(6,182,212,0.15)',
+      NAO:    'rgba(245,158,11,0.15)',
+      TALVEZ:    'rgba(245,158,11,0.15)',
+    }
+    return map[status] ?? 'rgba(148,163,184,0.1)';
+  }
+
+  confirmAttendence(status: ParticipantParticipation) : string{
+     if(status === 'NAO' || status === 'TALVEZ'){
+      return 'Confirmar Presença';
+     }else{
+      return 'Desmarcar Presença';
+     }
+  }
+  
+  async registerAttendence(m: Meeting) {
+    try {
+      const participant = await this.participantService.registrarPresenca(m.id!);
+
+      m.participation = participant;
+    } catch (error) {
+      console.error('Erro ao registrar presença:', error);
+    }
+  }
+
+
 }
