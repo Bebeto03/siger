@@ -90,6 +90,11 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
   async ngOnInit(): Promise<void> {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.loading.set(true);
+    this.route.fragment.subscribe(fragment => {
+  if (fragment === 'minutes') {
+      this.activeTab.set('minutes');
+    }
+  });
     try {
       const m = await this.meetingService.buscar(id);
       this.meeting.set(m);
