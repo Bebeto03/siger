@@ -10,7 +10,7 @@ import { Meeting } from '../../core/models/meeting.model';
 
 interface AtaDisplay {
   minutes: MeetingMinutes;
-  meeting?: Meeting;
+  meeting: Meeting;
 }
 
 @Component({
@@ -48,21 +48,42 @@ export class AtaList implements OnInit {
   async ngOnInit(): Promise<void> {
     this.loading.set(true);
     try {
-      const [minutes, meetings] = await Promise.all([
-        this.minutesService.listar(),
-        this.meetingService.listar().catch(() => [] as Meeting[]),
-      ]);
-      this.atas.set(
-        minutes.map(m => ({
-          minutes: m,
-          meeting: meetings.find(mt => mt.id === m.meeting?.id),
-        }))
+      const meetings = await this.meetingService.listarMinhasReunioes()
+                                                .catch(() => [] as Meeting[]);
+
+      const atas = await Promise.all(
+        meetings.map(async mt => {
+          if (!mt?.id) {
+            return null;
+          }
+
+          const minutes = await this.minutesService.buscarPorReuniao(mt.id);
+
+          if (!minutes) {
+            return null;
+          }
+
+          return {
+            meeting: mt,
+            minutes,
+          };
+        })
       );
+
+      const atasValidas: AtaDisplay[] = atas.filter(
+        (ata): ata is AtaDisplay => ata !== null
+      );
+
+      this.atas.set(atasValidas);
     } catch {
       this.notify.error('Erro ao carregar atas.');
     } finally {
       this.loading.set(false);
     }
+  }
+
+  printar(object: Object){
+    console.log(object);
   }
 
   goToMeeting(meetingId: number): void {

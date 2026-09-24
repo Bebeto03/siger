@@ -39,7 +39,6 @@
                     style="background: rgba(6,182,212,0.1)">
                 📋
                 </div>
-
                 <div class="flex-1 min-w-0">
                 <!-- Meeting title -->
                 <div class="flex items-center gap-2 flex-wrap mb-1">
@@ -73,7 +72,7 @@
                     <p class="text-sm" style="color: var(--color-text-muted)">Ata sem conteúdo ainda.</p>
                 }
 
-                @if (item.meeting?.meetingDate) {
+                @if (item.meeting.meetingDate) {
                     <div class="flex items-center gap-1 mt-2">
                     <span class="text-xs" style="color: var(--color-text-muted)">
                         📅 {{ formatDate(item.meeting!.meetingDate) }}
@@ -84,6 +83,7 @@
 
                 <div class="shrink-0">
                 <button class="px-3 py-1.5 rounded-lg text-xs font-medium"
+                    (click) = goToMeeting(item.meeting.id!)
                     style="background: var(--color-surface-light); color: var(--color-text-secondary); border: 1px solid var(--color-border); cursor: pointer">
                     Ver reunião →
                 </button>
