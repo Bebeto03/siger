@@ -7,7 +7,7 @@ import { Meeting } from '../models/meeting.model';
 export type { Meeting } from '../models/meeting.model';
 
 export interface MeetingCreateDTO {
-  userId: number;
+  user: { id: number };
   meetingDate: string;
   title: string;
   description: string;
@@ -34,16 +34,20 @@ export class MeetingService {
     return firstValueFrom(this.http.get<Meeting[]>(`${this.api}/findAll`));
   }
 
+  listarMinhasReunioes(): Promise<Meeting[]> {
+    return firstValueFrom(this.http.get<Meeting[]>(`${this.api}/my`));
+  }
+
   buscar(id: number): Promise<Meeting> {
     return firstValueFrom(this.http.get<Meeting>(`${this.api}/${id}`));
   }
 
   criar(data: MeetingCreateDTO): Promise<Meeting> {
-    return firstValueFrom(this.http.post<Meeting>(`${this.api}/create`, data));
+    return firstValueFrom(this.http.post<Meeting>(`${this.api}`, data));
   }
 
   editar(id: number, data: MeetingUpdateDTO): Promise<Meeting> {
-    return firstValueFrom(this.http.put<Meeting>(`${this.api}/update/${id}`, data));
+    return firstValueFrom(this.http.put<Meeting>(`${this.api}/${id}`, data));
   }
 
   cancelar(id: number): Promise<Meeting> {

@@ -29,6 +29,7 @@ export class AppSidebar {
     { id: 'tarefas',       label: 'Tarefas',       icon: '✅', route: '/tarefas'       },
     { id: 'atas',          label: 'Atas',           icon: '📋', route: '/atas'          },
     { id: 'relatorios',    label: 'Relatórios',    icon: '📊', route: '/relatorios'    },
+    { id: 'disponibilidade', label: 'Disponibilidade', icon: '🕒', route: '/disponibilidade' },
     { id: 'usuarios',      label: 'Usuários',      icon: '👥', route: '/usuarios',      adminOnly: true },
     { id: 'configuracoes', label: 'Configurações', icon: '⚙️', route: '/configuracoes' },
   ];

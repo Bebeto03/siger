@@ -3,7 +3,7 @@ import { HttpClient, HttpContext } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { jwtDecode } from 'jwt-decode';
 import { environment } from '../../../environment/environment';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Observable, tap } from 'rxjs';
 import { SKIP_ERROR_NAVIGATION } from '../interceptors/error.interceptor';
 
 export interface JwtPayload {
@@ -18,10 +18,16 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface TokenResponse {
+  accessToken: string;
+  refreshToken: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
 
   private readonly TOKEN_KEY = environment.tokenKey;
+  private readonly REFRESH_TOKEN_KEY = environment.refreshTokenKey;
   private _payload = signal<JwtPayload | null>(null);
 
   readonly currentUser = this._payload.asReadonly();
@@ -32,11 +38,18 @@ export class AuthService {
 
   async login(credentials: LoginRequest): Promise<void> {
     const response = await firstValueFrom(
-      this.http.post<{ token: string }>(`${environment.apiUrl}/auth/login`, credentials, {
+      this.http.post<TokenResponse>(`${environment.apiUrl}/auth/login`, credentials, {
         context: new HttpContext().set(SKIP_ERROR_NAVIGATION, true),
       })
     );
-    this.armazenarToken(response.token);
+    this.armazenarTokens(response.accessToken, response.refreshToken);
+  }
+
+  refreshAccessToken(): Observable<TokenResponse> {
+    const refreshToken = this.buscarRefreshToken();
+    return this.http.post<TokenResponse>(`${environment.apiUrl}/auth/refresh`, { refreshToken }).pipe(
+      tap(tokens => this.armazenarTokens(tokens.accessToken, tokens.refreshToken))
+    );
   }
 
   async forgotPassword(email: string): Promise<void> {
@@ -52,7 +65,13 @@ export class AuthService {
   }
 
   logout(): void {
+    const refreshToken = this.buscarRefreshToken();
+    if (refreshToken) {
+      // Fire-and-forget: invalida o refresh token no servidor
+      this.http.post(`${environment.apiUrl}/auth/logout`, { refreshToken }).subscribe();
+    }
     localStorage.removeItem(this.TOKEN_KEY);
+    localStorage.removeItem(this.REFRESH_TOKEN_KEY);
     this._payload.set(null);
     this.router.navigate(['/login']);
   }
@@ -81,14 +100,19 @@ export class AuthService {
     return localStorage.getItem(this.TOKEN_KEY);
   }
 
+  buscarRefreshToken(): string | null {
+    return localStorage.getItem(this.REFRESH_TOKEN_KEY);
+  }
+
   getNomeUsuario(): string {
     return this._payload()?.sub ?? '';
   }
 
-  private armazenarToken(token: string): void {
-    localStorage.setItem(this.TOKEN_KEY, token);
+  private armazenarTokens(accessToken: string, refreshToken: string): void {
+    localStorage.setItem(this.TOKEN_KEY, accessToken);
+    localStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken);
     try {
-      this._payload.set(jwtDecode<JwtPayload>(token));
+      this._payload.set(jwtDecode<JwtPayload>(accessToken));
     } catch {
       this._payload.set(null);
     }
@@ -100,7 +124,9 @@ export class AuthService {
       try {
         this._payload.set(jwtDecode<JwtPayload>(token));
       } catch {
-        this.logout();
+        localStorage.removeItem(this.TOKEN_KEY);
+        localStorage.removeItem(this.REFRESH_TOKEN_KEY);
+        this._payload.set(null);
       }
     }
   }

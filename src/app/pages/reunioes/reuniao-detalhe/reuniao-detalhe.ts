@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { environment } from '../../../../environment/environment';
 import { FormsModule } from '@angular/forms';
@@ -64,7 +64,7 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
 
   activeTab = signal<ActiveTab>('info');
 
-  minutesForm = { objectives: '', notes: '', decision: '' };
+  minutesForm = { objectives: '', notes: '', decision: ''};
   minutesHistory = signal<{ author: string; date: string }[]>([]);
 
   tasks        = signal<Task[]>([]);
@@ -85,9 +85,16 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
     { id: 'tasks'        as ActiveTab, label: 'Tarefas'       },
   ];
 
+  podecriarReuniao = computed(() => this.auth.temQualquerPermissao(['ROLE_ADMIN', 'ROLE_ORGANIZADOR']));
+
   async ngOnInit(): Promise<void> {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.loading.set(true);
+    this.route.fragment.subscribe(fragment => {
+  if (fragment === 'minutes') {
+      this.activeTab.set('minutes');
+    }
+  });
     try {
       const m = await this.meetingService.buscar(id);
       this.meeting.set(m);
@@ -126,7 +133,7 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
       const min = await this.minutesService.buscarPorReuniao(meetingId);
       this.minutes.set(min);
       if (min) {
-        this.minutesForm = { objectives: min.objectives, notes: min.notes, decision: min.decision };
+        this.minutesForm = { objectives: min.objectives, notes: min.notes, decision: min.decision};
         this.topics.set((min.topics ?? []).sort((a, b) => a.orderIndex - b.orderIndex));
       }
     } catch {
@@ -177,13 +184,9 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
     if (!meetingId) return;
     this.savingMinutes.set(true);
     try {
-      const payload = { meetingId, ...this.minutesForm };
-      if (this.minutes()?.id) {
-        await this.minutesService.editar(this.minutes()!.id!, payload);
-      } else {
-        const created = await this.minutesService.criar(payload, { skipNavigation: true });
-        this.minutes.set(created);
-      }
+      const payload = { meeting: { id: meetingId }, ...this.minutesForm };
+      const created = await this.minutesService.criar(payload, { skipNavigation: true });
+      this.minutes.set(created);
       const now   = new Date();
       const label = `${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
       this.minutesHistory.update(h => [{ author: this.auth.getNomeUsuario() || 'Você', date: label }, ...h]);
@@ -262,8 +265,17 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
     window.open(`${environment.apiUrl}/pdf/meeting/${id}`, '_blank');
   }
 
-  onComingSoon(feature: string): void {
-    this.notify.info(`${feature} estará disponível em breve.`);
+  async summaryAi(): Promise<void> {
+    const { objectives, notes, decision } = this.minutesForm;
+    if (!objectives || !notes || !decision) return;
+
+    try {
+      const result = await this.minutesService.summaryAi({ objectives, notes, decision });
+      this.minutesForm = result;
+    } catch (err) {
+      console.error('Falha ao gerar resumo com IA', err);
+      // aqui pode entrar um toast/snackbar para avisar o usuário
+    }
   }
 
   // ── Timer ───────────────────────────────────────────────────────────────────

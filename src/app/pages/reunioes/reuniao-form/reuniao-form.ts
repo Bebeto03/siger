@@ -219,7 +219,7 @@ export class ReuniaoForm implements OnInit {
       } else {
         const me = await this.userService.buscarMe();
         const createDTO: MeetingCreateDTO = {
-          userId:      me.id,
+          user:        { id: me.id },
           meetingDate,
           title:       this.form.title,
           description: this.form.description,
@@ -249,7 +249,7 @@ export class ReuniaoForm implements OnInit {
     await Promise.all(existing.map(p => this.participantService.excluir(p.id!)));
     await Promise.all(
       this.formParticipants.map(p =>
-        this.participantService.criar({ userId: p.userId, meetingId, role: p.role })
+        this.participantService.criar({ user: { id: p.userId }, meeting: { id: meetingId }, role: p.role })
       )
     );
   }
@@ -258,21 +258,34 @@ export class ReuniaoForm implements OnInit {
     let minutes = await this.minutesService.buscarPorReuniao(meetingId);
     if (!minutes) {
       minutes = await this.minutesService.criar(
-        { meetingId, objectives: '', notes: '', decision: '' },
+        { meeting: { id: meetingId }, objectives: '', notes: '', decision: '' },
         { skipNavigation: true }
       );
     }
+
+    const me = await this.userService.buscarMe();
+    const participants = await this.participantService.listarPorReuniao(meetingId);
+    let myParticipant = participants.find(p => p.user.id === me.id);
+    if (!myParticipant) {
+      myParticipant = await this.participantService.criar({
+        user:    { id: me.id },
+        meeting: { id: meetingId },
+        role:    'ORGANIZADOR',
+      });
+    }
+
     await Promise.all((minutes.topics ?? []).map(t => this.topicService.excluir(t.id!)));
     await Promise.all(
       this.formTopics
         .filter(t => t.title.trim())
         .map(t => this.topicService.criar({
-          meetingMinutesId: minutes!.id!,
-          title:            t.title,
-          priority:         t.priority,
-          timer:            t.timer,
-          orderIndex:       t.orderIndex,
-          concluded:        false,
+          meetingMinutes: { id: minutes!.id! },
+          participant:    { id: myParticipant!.id! },
+          title:          t.title,
+          priority:       t.priority,
+          timer:          t.timer,
+          orderIndex:     t.orderIndex,
+          concluded:      false,
         }))
     );
   }

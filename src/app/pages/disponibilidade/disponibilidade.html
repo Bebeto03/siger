@@ -1,0 +1,51 @@
+<div class="flex flex-col min-h-full">
+  <app-toast />
+  <div class="flex items-center justify-between px-7 py-5 border-b"
+       style="background: var(--color-surface); border-color: var(--color-border)">
+    <div>
+      <h1 class="text-xl font-bold" style="color: var(--color-text-primary)">Minha Disponibilidade</h1>
+      <p class="text-sm mt-0.5" style="color: var(--color-text-muted)">
+        Clique ou arraste sobre os horários em que você costuma estar livre para reuniões
+      </p>
+    </div>
+    <button class="px-5 py-2 rounded-lg text-sm font-semibold"
+            style="background: var(--color-primary); color: #0B1120; border: none; cursor: pointer"
+            [disabled]="saving()"
+            (click)="salvar()">
+      {{ saving() ? 'Salvando...' : 'Salvar disponibilidade' }}
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="flex items-center justify-center py-20 gap-3">
+      <span class="text-sm" style="color: var(--color-text-muted)">Carregando...</span>
+    </div>
+  } @else {
+    <div class="p-7" style="overflow-x: auto">
+      <div style="display: grid; grid-template-columns: 56px repeat(7, 1fr); gap: 2px;
+                  min-width: 640px; max-height: 70vh; overflow-y: auto">
+        <div style="position: sticky; top: 0; background: var(--color-bg); z-index: 1"></div>
+        @for (day of days; track day.key) {
+          <div class="text-center text-xs font-semibold pb-2"
+               style="position: sticky; top: 0; background: var(--color-bg); color: var(--color-text-secondary); z-index: 1">
+            {{ day.label }}
+          </div>
+        }
+        @for (slot of slots; track slot; let row = $index) {
+          <div class="text-right text-[10px] pr-2" style="color: var(--color-text-muted)">
+            {{ row % 2 === 0 ? slot : '' }}
+          </div>
+          @for (day of days; track day.key; let col = $index) {
+            <div class="slot-cell"
+                 [class.selected]="grid()[row][col]"
+                 [class.free]="!grid()[row][col]"
+                 style="height: 14px"
+                 (mousedown)="startDrag(row, col)"
+                 (mouseenter)="enterCell(row, col)">
+            </div>
+          }
+        }
+      </div>
+    </div>
+  }
+</div>

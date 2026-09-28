@@ -1,11 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
+import { NotificationBell } from './notification-bell';
 
 @Component({
   selector: 'app-topbar',
   standalone: true,
-  imports: [RouterModule],
+  imports: [RouterModule, NotificationBell],
   template: `
     <header class="flex items-center justify-between px-7 py-4 shrink-0"
             style="background: var(--color-surface); border-bottom: 1px solid var(--color-border);">
@@ -16,6 +17,7 @@ import { AuthService } from '../core/services/auth.service';
         }
       </div>
       <div class="flex items-center gap-3">
+        <app-notification-bell />
         <span class="text-sm" style="color: var(--color-text-muted);">{{ auth.getNomeUsuario() }}</span>
         <button
           (click)="logout()"

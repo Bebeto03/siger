@@ -15,6 +15,7 @@ O que o backend precisa implementar para cobrir 100% do frontend. Este documento
 | Atas (MeetingMinutes) | CRUD + findAll | ✅ Já existe |
 | Pautas (Topic) | CRUD + findAll | ✅ Já existe |
 | Logs | POST | ✅ Já existe |
+| Notificações | listar, contagem, marcar lida | ✅ Já existe |
 | **Tarefas (Task)** | **CRUD + findAll** | ❌ **NÃO EXISTE — precisa ser criado** |
 
 ---
@@ -327,6 +328,41 @@ O frontend envia logs nas seguintes operações:
 
 **Endpoint:**
 - `POST /api/log` → resposta 200 ou 201, body ignorado pelo frontend
+
+---
+
+## ✅ Notificações `/api/notification`
+
+Lembretes de reunião exibidos no sino do topbar. O backend cria uma notificação (e envia e-mail) para cada participante com presença `SIM` ou ainda não respondida (`TALVEZ`), **24h e 1h antes** de reuniões `NAO_INICIADO`. Todos os endpoints são do usuário logado (JWT); só é possível ler/alterar as próprias notificações.
+
+### Estrutura retornada
+```json
+{
+  "id": 12,
+  "meetingId": 4,
+  "type": "MEETING_REMINDER",
+  "title": "Reunião em 1 hora",
+  "message": "\"Kickoff — Módulo de IA\" - 30/04/2026 às 10:00. Você ainda não confirmou sua presença.",
+  "read": false,
+  "createdAt": "2026-04-30T09:00:03"
+}
+```
+
+### Tipos (`type`)
+| Tipo | Destinatário | Quando |
+|------|--------------|--------|
+| `MEETING_REMINDER` | Participante | 24h e 1h antes (presença `SIM` ou sem resposta) |
+| `ORGANIZER_NO_CONFIRMATION` | Organizador da reunião | 1h antes, se **nenhum participante** confirmou presença (`SIM`). A linha do próprio organizador não conta como confirmação. Vale também para reunião sem convidados. Também enviado por e-mail |
+
+O alerta é enviado uma única vez por reunião/data (`tb_meeting_organizer_alert`); se a reunião for remarcada, um novo alerta volta a valer. Reuniões `CANCELADO` ou com organizador `INATIVO` não geram alerta.
+
+**Endpoints:**
+- `GET /api/notification` → últimas 30 notificações do usuário, mais recentes primeiro
+- `GET /api/notification/unread-count` → `{ "count": 3 }`
+- `PATCH /api/notification/{id}/read` → notificação atualizada (403 se for de outro usuário, 404 se não existir)
+- `PATCH /api/notification/read-all` → 204
+
+O frontend consulta a lista e a contagem a cada 60s (`NotificacaoService`), com a aba visível, usando `BACKGROUND_REQUEST` para não exibir loading nem toasts de erro.
 
 ---
 
