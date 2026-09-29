@@ -224,8 +224,8 @@ export class RelatorioList implements OnInit {
   heatmapRows = computed(() => {
     const grid: number[][] = Array.from({ length: 5 }, () => new Array(10).fill(0));
     for (const m of this.meetings()) {
-      if (!m.meetingDate) continue;
-      const d      = new Date(m.meetingDate);
+      if (!m.estimatedMeetingDate) continue;
+      const d      = new Date(m.estimatedMeetingDate);
       const jsDay  = d.getDay(); // 0=Dom, 1=Seg, ..., 5=Sex, 6=Sáb
       if (jsDay === 0 || jsDay === 6) continue;
       const dayIdx  = jsDay - 1;       // Seg=0 ... Sex=4

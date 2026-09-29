@@ -83,7 +83,7 @@ export class ReuniaoList implements OnInit {
     for (let d = 1; d <= daysInMonth; d++) {
       const isToday  = today.getDate() === d && today.getMonth() === month && today.getFullYear() === year;
       const meetings = this.meetings().filter(m => {
-        const date = new Date(m.meetingDate);
+        const date = new Date(m.estimatedMeetingDate);
         return date.getDate() === d && date.getMonth() === month && date.getFullYear() === year;
       });
       cells.push({ day: d, isToday, meetings });

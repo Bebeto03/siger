@@ -73,7 +73,7 @@ export class ReuniaoForm implements OnInit {
 
   form: Omit<Meeting, 'id' | 'createdAt' | 'updatedAt'> = {
     title: '', description: '', location: '',
-    meetingDate: '', duration: 60,
+    estimatedMeetingDate: '', duration: 60,
   };
 
   formDate = '';
@@ -133,9 +133,9 @@ export class ReuniaoForm implements OnInit {
       try {
         const m = await this.meetingService.buscar(this.editId);
         this.form = { title: m.title, description: m.description, location: m.location,
-                      meetingDate: m.meetingDate, duration: m.duration, status: m.status };
-        if (m.meetingDate) {
-          const d = new Date(m.meetingDate);
+                      estimatedMeetingDate: m.estimatedMeetingDate, duration: m.duration, status: m.status };
+        if (m.estimatedMeetingDate) {
+          const d = new Date(m.estimatedMeetingDate);
           this.formDate = d.toISOString().substring(0, 10);
           this.formTime = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
         }

@@ -68,10 +68,10 @@
                 <div class="flex flex-col items-center justify-center rounded-xl shrink-0"
                     style="width: 56px; height: 56px; background: var(--color-surface-light)">
                 <span class="text-lg font-extrabold leading-none" style="color: var(--color-text-primary)">
-                    {{ dayOf(m.meetingDate) }}
+                    {{ dayOf(m.estimatedMeetingDate) }}
                 </span>
                 <span class="text-xs mt-1" style="color: var(--color-text-muted)">
-                    {{ monthOf(m.meetingDate) }}
+                    {{ monthOf(m.estimatedMeetingDate) }}
                 </span>
                 </div>
 
@@ -93,7 +93,7 @@
                 <p class="text-xs mt-1 truncate" style="color: var(--color-text-muted)">{{ m.description }}</p>
                 <div class="flex gap-4 mt-2 flex-wrap">
                     <span class="text-xs flex items-center gap-1" style="color: var(--color-text-secondary)">
-                    🕐 {{ timeOf(m.meetingDate) }} · {{ m.duration }}min
+                    🕐 {{ timeOf(m.estimatedMeetingDate) }} · {{ m.duration }}min
                     </span>
                     <span class="text-xs flex items-center gap-1" style="color: var(--color-text-secondary)">
                     📍 {{ m.location }}
