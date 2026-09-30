@@ -102,10 +102,11 @@ export class ReuniaoForm implements OnInit {
     return [
       { key: 'Título',        value: this.form.title    || '—'                              },
       { key: 'Data / Hora',   value: dateLabel                                              },
-      { key: 'Duração',       value: this.form.duration ? `${this.form.duration} min` : '—'},
+      { key: 'Duração',       value: this.form.duration ? `${this.form.duration} min` : '—' },
       { key: 'Local',         value: this.form.location || '—'                              },
+      { key: 'Modalidade',    value: this.form.isPresent ? `Presencial` : `Remoto`          },
       { key: 'Participantes', value: `${this.formParticipants.length} convidado(s)`         },
-      { key: 'Pautas',        value: `${this.formTopics.length} item(s)`                   },
+      { key: 'Pautas',        value: `${this.formTopics.length} item(s)`                    },
     ];
   }
 
@@ -200,14 +201,15 @@ export class ReuniaoForm implements OnInit {
   async submit(): Promise<void> {
     this.saving.set(true);
     try {
-      const meetingDate = `${this.formDate}T${this.formTime}:00`;
+      const estimatedMeetingDate = `${this.formDate}T${this.formTime}:00`;
 
       if (this.isEdit && this.editId) {
         const updateDTO: MeetingUpdateDTO = {
-          meetingDate,
+          estimatedMeetingDate,
           title:       this.form.title,
           description: this.form.description,
           location:    this.form.location,
+          isPresent:   this.form.isPresent,
           duration:    this.form.duration,
           status:      this.form.status,
         };
@@ -220,10 +222,11 @@ export class ReuniaoForm implements OnInit {
         const me = await this.userService.buscarMe();
         const createDTO: MeetingCreateDTO = {
           user:        { id: me.id },
-          meetingDate,
+          estimatedMeetingDate,
           title:       this.form.title,
           description: this.form.description,
           location:    this.form.location,
+          isPresent:   this.form.isPresent,
           duration:    this.form.duration,
         };
         const meeting = await this.meetingService.criar(createDTO);

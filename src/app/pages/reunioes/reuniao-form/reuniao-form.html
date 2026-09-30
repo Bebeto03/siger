@@ -59,16 +59,30 @@
             <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Horário *</label>
             <input type="time" [(ngModel)]="formTime" class="w-full px-3 py-2.5 mb-4" />
             </div>
-        </div>
-
-        <div class="flex gap-4">
             <div class="flex-1">
             <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Duração (min) *</label>
             <input type="number" [(ngModel)]="form.duration" placeholder="60" min="1" class="w-full px-3 py-2.5 mb-4" />
             </div>
+        </div>
+
+        <div class="flex gap-4">
             <div class="flex-1">
             <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Local *</label>
             <input [(ngModel)]="form.location" placeholder="Sala ou link da reunião" class="w-full px-3 py-2.5 mb-4" />
+            </div>
+            <div class="flex-1">
+                <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Modalidade *</label>
+                <div class="flex items-center gap-6 py-2.5 mb-4">
+                    <label class="flex items-center gap-2 cursor-pointer text-sm" style="color: var(--color-text-primary)">
+                        <input type="radio" name="modalidade" [value]="true" [(ngModel)]="form.isPresent" class="w-4 h-4" />
+                        Presencial
+                    </label>
+
+                    <label class="flex items-center gap-2 cursor-pointer text-sm" style="color: var(--color-text-primary)">
+                        <input type="radio" name="modalidade" [value]="false" [(ngModel)]="form.isPresent" class="w-4 h-4" />
+                        Remoto
+                    </label>
+                </div>
             </div>
         </div>
         }

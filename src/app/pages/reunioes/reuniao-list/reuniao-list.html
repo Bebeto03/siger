@@ -85,9 +85,9 @@
                     {{ statusLabel(m.status!) }}
                     </span>
                     <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold"
-                        [style.background]="statusBgParticipation(m.participation?.participation!)"
-                        [style.color]="statusColorParticipation(m.participation?.participation!)">
-                    {{ statusLabelParticipation(m.participation?.participation!) }}
+                        [style.background]="statusBgParticipation(m.participant?.participation!)"
+                        [style.color]="statusColorParticipation(m.participant?.participation!)">
+                    {{ statusLabelParticipation(m.participant?.participation!) }}
                     </span>
                 </div>
                 <p class="text-xs mt-1 truncate" style="color: var(--color-text-muted)">{{ m.description }}</p>
@@ -109,7 +109,7 @@
                 <!-- Actions -->
                 <div class="flex items-center gap-2 shrink-0" (click)="$event.stopPropagation()">
 
-                @let participation = m.participation?.participation;
+                @let participation = m.participant?.participation;
                 @if (participation &&
                     participation !== 'NAO_PARTICIPOU' &&
                     participation !== 'PARTICIPOU') {

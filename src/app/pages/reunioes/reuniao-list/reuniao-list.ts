@@ -229,7 +229,7 @@ export class ReuniaoList implements OnInit {
     try {
       const participant = await this.participantService.registrarPresenca(m.id!);
 
-      m.participation = participant;
+      m.participant = participant;
     } catch (error) {
       console.error('Erro ao registrar presença:', error);
     }

@@ -21,6 +21,6 @@ export interface Meeting {
   // (Participant.meeting é WRITE_ONLY, então não há loop de serialização)
   participants?: Omit<Participant, 'meeting'>[];
   user?: { id: number; name?: string; email?: string };
-  participation?: Participant;
+  participant?: Participant;
   isPresent?: boolean;
 }
