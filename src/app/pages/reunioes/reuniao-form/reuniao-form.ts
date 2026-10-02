@@ -74,6 +74,7 @@ export class ReuniaoForm implements OnInit {
   form: Omit<Meeting, 'id' | 'createdAt' | 'updatedAt'> = {
     title: '', description: '', location: '',
     estimatedMeetingDate: '', duration: 60,
+    isPresent: true
   };
 
   formDate = '';
@@ -134,7 +135,7 @@ export class ReuniaoForm implements OnInit {
       try {
         const m = await this.meetingService.buscar(this.editId);
         this.form = { title: m.title, description: m.description, location: m.location,
-                      estimatedMeetingDate: m.estimatedMeetingDate, duration: m.duration, status: m.status };
+                      estimatedMeetingDate: m.estimatedMeetingDate, duration: m.duration, status: m.status, isPresent: m.isPresent };
         if (m.estimatedMeetingDate) {
           const d = new Date(m.estimatedMeetingDate);
           this.formDate = d.toISOString().substring(0, 10);

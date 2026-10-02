@@ -109,15 +109,32 @@
                 <!-- Actions -->
                 <div class="flex items-center gap-2 shrink-0" (click)="$event.stopPropagation()">
 
-                @let participation = m.participant?.participation;
-                @if (participation &&
-                    participation !== 'NAO_PARTICIPOU' &&
-                    participation !== 'PARTICIPOU') {
+                @if (canStart(m)) {
+                    <button (click)="startMeeting(m)"
+                        [disabled]="startingId() !== null"
+                        class="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                        style="background: var(--color-primary); color: #000000; border: none; cursor: pointer"
+                        [style.opacity]="startingId() !== null ? 0.6 : 1">
+                        {{ startingId() === m.id ? 'Iniciando...' : '▶ Iniciar' }}
+                    </button>
+                }
+                
+                @if (canEnter(m)) {
+                    <button (click)="enterMeeting(m)"
+                        [disabled]="enteringId() !== null"
+                        class="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                        style="background: var(--color-primary); color: #000000; border: none; cursor: pointer"
+                        [style.opacity]="enteringId() !== null ? 0.6 : 1">
+                        {{ enteringId() === m.id ? 'Iniciando...' : 'Entrar' }}
+                    </button>
+                }
+                
+                @if (canRegister(m.status!,m.participant?.participation!)) {
                     <button
                         (click)="registerAttendence(m)"
                         class="px-3 py-1.5 rounded-lg text-xs font-semibold"
                         style="background: var(--color-primary); color: #000000; border: none; cursor: pointer">
-                        {{ confirmAttendence(participation) }}
+                        {{ confirmAttendence(m.participant?.participation!) }}
                     </button>
                 }
 
