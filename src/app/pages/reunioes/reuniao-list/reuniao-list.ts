@@ -39,6 +39,8 @@ export class ReuniaoList implements OnInit {
   searchText  = signal('');
   deleteTarget = signal<Meeting | null>(null);
   deleting    = signal(false);
+  startingId = signal<Number | null>(null);
+  enteringId = signal<Number | null>(null);
 
   calendarYear  = signal(new Date().getFullYear());
   calendarMonth = signal(new Date().getMonth());
@@ -68,6 +70,8 @@ export class ReuniaoList implements OnInit {
   });
 
   podecriarReuniao = computed(() => this.auth.temQualquerPermissao(['ROLE_ADMIN', 'ROLE_ORGANIZADOR']));
+  
+  isOrganizer = computed(() => this.auth.temQualquerPermissao(['ROLE_ORGANIZADOR']));
 
   calendarLabel = computed(() => `${this.monthNames[this.calendarMonth()]} ${this.calendarYear()}`);
 
@@ -83,7 +87,7 @@ export class ReuniaoList implements OnInit {
     for (let d = 1; d <= daysInMonth; d++) {
       const isToday  = today.getDate() === d && today.getMonth() === month && today.getFullYear() === year;
       const meetings = this.meetings().filter(m => {
-        const date = new Date(m.meetingDate);
+        const date = new Date(m.estimatedMeetingDate);
         return date.getDate() === d && date.getMonth() === month && date.getFullYear() === year;
       });
       cells.push({ day: d, isToday, meetings });
@@ -217,8 +221,8 @@ export class ReuniaoList implements OnInit {
     return map[status] ?? 'rgba(148,163,184,0.1)';
   }
 
-  confirmAttendence(status: ParticipantParticipation) : string{
-     if(status === 'NAO' || status === 'TALVEZ'){
+  confirmAttendence(participation: ParticipantParticipation) : string{
+     if(participation === 'NAO' || participation === 'TALVEZ'){
       return 'Confirmar Presença';
      }else{
       return 'Desmarcar Presença';
@@ -229,11 +233,56 @@ export class ReuniaoList implements OnInit {
     try {
       const participant = await this.participantService.registrarPresenca(m.id!);
 
-      m.participation = participant;
+      m.participant = participant;
     } catch (error) {
       console.error('Erro ao registrar presença:', error);
     }
   }
 
+  canRegister(status: MeetingStatus, participation: ParticipantParticipation){
+    return participation &&
+            participation !== 'NAO_PARTICIPOU' &&
+            participation !== 'PARTICIPOU' &&
+            status != 'CONCLUIDO' &&
+            status != 'CANCELADO';
+  }
+
+  canStart(meeting: Meeting){
+    return meeting.isPresent &&
+           meeting.status === 'NAO_INICIADO' && 
+           this.isOrganizer();
+  }
+
+  async startMeeting(meeting: Meeting) {
+    if (this.startingId() !== null) return;
+
+    this.startingId.set(meeting.id!);
+    try {
+      await this.meetingService.iniciar(meeting.id!);
+      this.router.navigate(['/reunioes', meeting.id, 'sala']);
+    } catch (err) {
+      // exibir toast com a mensagem do erro
+    } finally {
+      this.startingId.set(null);
+    }
+  }
+  
+  canEnter(meeting: Meeting){
+    return meeting.isPresent &&
+    meeting.status === 'EM_ANDAMENTO'
+  }
+
+  async enterMeeting(meeting: Meeting) {
+    if (this.enteringId() !== null) return;
+
+    this.enteringId.set(meeting.id!);
+    try {
+      this.router.navigate(['/reunioes', meeting.id, 'sala']);
+    } catch (err) {
+      // exibir toast com a mensagem do erro
+    } finally {
+      this.enteringId.set(null);
+    }
+  }
 
 }

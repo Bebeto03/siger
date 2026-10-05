@@ -6,4 +6,5 @@ export const REUNIOES_ROUTES: Routes = [
   { path: 'nova', loadComponent: () => import('./reuniao-form/reuniao-form').then(m => m.ReuniaoForm), canActivate: [roleGuard(['ROLE_ADMIN', 'ROLE_ORGANIZADOR'])] },
   { path: ':id', loadComponent: () => import('./reuniao-detalhe/reuniao-detalhe').then(m => m.ReuniaoDetalhe) },
   { path: ':id/editar', loadComponent: () => import('./reuniao-form/reuniao-form').then(m => m.ReuniaoForm), canActivate: [roleGuard(['ROLE_ADMIN', 'ROLE_ORGANIZADOR'])] },
+  {path: ':id/sala',loadComponent: () =>import('./reuniao-sala/reuniao-sala').then(m => m.ReuniaoSala), }
 ];

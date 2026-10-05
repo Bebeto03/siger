@@ -8,18 +8,20 @@ export type { Meeting } from '../models/meeting.model';
 
 export interface MeetingCreateDTO {
   user: { id: number };
-  meetingDate: string;
+  estimatedMeetingDate: string;
   title: string;
   description: string;
   location: string;
+  isPresent?: boolean;
   duration: number;
 }
 
 export interface MeetingUpdateDTO {
-  meetingDate: string;
+  estimatedMeetingDate: string;
   title: string;
   description: string;
   location: string;
+  isPresent?: boolean;
   duration: number;
   status?: string;
 }
@@ -56,5 +58,13 @@ export class MeetingService {
 
   excluir(id: number): Promise<void> {
     return firstValueFrom(this.http.delete<void>(`${this.api}/${id}`));
+  }
+
+  iniciar(id: number): Promise<Meeting> {
+    return firstValueFrom(this.http.post<Meeting>(`${this.api}/start/${id}`, {}));
+  }
+  
+  finalizar(id: number): Promise<Meeting> {
+    return firstValueFrom(this.http.post<Meeting>(`${this.api}/finalize/${id}`, {}));
   }
 }

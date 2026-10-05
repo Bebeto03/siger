@@ -111,7 +111,7 @@
                     <div class="text-sm font-semibold truncate" style="color: var(--color-text-primary)">{{ m.title }}</div>
                     <div class="flex gap-4 mt-1 flex-wrap">
                         <span class="text-xs flex items-center gap-1" style="color: var(--color-text-muted)">
-                        📅 {{ formatDate(m.meetingDate) }}
+                        📅 {{ formatDate(m.estimatedMeetingDate) }}
                         </span>
                         @if (participantCount()[m.id!]) {
                         <span class="text-xs flex items-center gap-1" style="color: var(--color-text-muted)">

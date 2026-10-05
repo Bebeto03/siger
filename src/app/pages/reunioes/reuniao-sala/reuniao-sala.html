@@ -1,0 +1,111 @@
+@if (meeting(); as m) {
+<div class="flex flex-col h-full gap-4 p-6">
+
+  <!-- Cabeçalho -->
+  <div class="flex items-center justify-between rounded-xl px-5 py-3"
+       style="background: var(--color-surface); border: 1px solid var(--color-border)">
+    <div>
+      <h2 class="text-base font-bold" style="color: var(--color-text-primary)">{{ m.title }}</h2>
+      <span class="text-xs" style="color: var(--color-text-secondary)">⏱ {{ fmt(meetingElapsed()) }}</span>
+    </div>
+    @if(isOrganizer()){
+        <button (click)="endMeeting()" [disabled]="ending()"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold"
+            style="background: rgba(239,68,68,0.1); color: var(--color-danger); border: 1px solid rgba(239,68,68,0.2); cursor: pointer">
+        {{ ending() ? 'Encerrando...' : '⏹ Encerrar reunião' }}
+        </button>
+    }
+  </div>
+
+  <div class="grid grid-cols-[260px_1fr_240px] gap-4 flex-1 min-h-0">
+
+    <!-- Pautas -->
+    <div class="rounded-xl p-4 overflow-y-auto"
+         style="background: var(--color-surface); border: 1px solid var(--color-border)">
+      <h3 class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: var(--color-text-secondary)">Pautas</h3>
+      @for (item of agenda(); track item.id; let i = $index) {
+        <div class="flex items-center gap-2 px-3 py-2 mb-2 rounded-lg text-sm"
+             [style.background]="item.status === 'active' ? 'rgba(34,184,207,0.12)' : 'transparent'"
+             [style.border]="item.status === 'active' ? '1px solid var(--color-primary)' : '1px solid transparent'"
+             [style.opacity]="item.status === 'done' ? 0.55 : 1"
+             style="color: var(--color-text-primary)">
+          <span>{{ item.status === 'done' ? '✔' : item.status === 'active' ? '▶' : '○' }}</span>
+          <span class="flex-1">{{ i + 1 }}. {{ item.title }}</span>
+          <span class="text-xs" style="color: var(--color-text-secondary)">{{ item.durationMin }}min</span>
+        </div>
+      }
+    </div>
+
+    <!-- Pauta atual -->
+    <div class="rounded-xl p-5 flex flex-col"
+         style="background: var(--color-surface); border: 1px solid var(--color-border)">
+      @if (current(); as c) {
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-bold" style="color: var(--color-text-primary)">{{ c.title }}</h3>
+          <span class="text-sm font-semibold"
+                [style.color]="overtime() ? 'var(--color-danger)' : 'var(--color-text-secondary)'">
+            ⏱ {{ fmt(agendaElapsed()) }} / {{ c.durationMin }}:00
+          </span>
+        </div>
+
+        <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Anotações e decisões</label>
+        <textarea [value]="c.notes" (input)="updateNotes($any($event.target).value)"
+                  class="w-full flex-1 px-3 py-2.5 resize-none" placeholder="Registre o que foi decidido..."></textarea>
+
+        <div class="flex justify-between mt-4">
+        @if(isOrganizer()){  
+            <button (click)="previous()" [disabled]="currentIndex() === 0"
+                class="btn-action px-3 py-1.5 rounded-lg text-xs font-medium"
+                style="background: var(--color-surface-light); color: var(--color-text-secondary); border: 1px solid var(--color-border); cursor: pointer">
+                ← Anterior
+            </button>
+            <button (click)="next()" [disabled]="currentIndex() === agenda().length - 1"
+                class="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                style="background: var(--color-primary); color: #000000; border: none; cursor: pointer">
+                Próxima pauta →
+            </button>
+        }
+        </div>
+      }
+    </div>
+
+    <!-- Participantes (tempo real vem depois) -->
+    <div class="rounded-xl p-4"
+         style="background: var(--color-surface); border: 1px solid var(--color-border)">
+      <h3 class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: var(--color-text-secondary)">Participantes</h3>
+      <p class="text-xs" style="color: var(--color-text-secondary)">
+        A lista ao vivo aparece quando a sincronização em tempo real for implementada.
+      </p>
+    </div>
+  </div>
+
+  <!-- Barra de controles -->
+  <div class="flex items-center justify-center gap-3 rounded-xl px-5 py-3"
+       style="background: var(--color-surface); border: 1px solid var(--color-border)">
+
+    @switch (micState()) {
+      @case ('idle') {
+        <button (click)="enableMic()" class="px-3 py-1.5 rounded-lg text-xs font-semibold"
+            style="background: var(--color-primary); color: #000000; border: none; cursor: pointer">
+          🎤 Ativar microfone
+        </button>
+      }
+      @case ('denied') {
+        <span class="text-xs" style="color: var(--color-danger)">
+          Permissão negada. Libere o microfone no ícone de cadeado da barra de endereço e recarregue.
+        </span>
+      }
+      @default {
+        <button (click)="toggleMute()" class="btn-action px-3 py-1.5 rounded-lg text-xs font-medium"
+            style="background: var(--color-surface-light); color: var(--color-text-secondary); border: 1px solid var(--color-border); cursor: pointer">
+          {{ micState() === 'on' ? '🎤 Microfone ligado' : '🔇 Mudo' }}
+        </button>
+        <button (click)="toggleRecording()" class="btn-action px-3 py-1.5 rounded-lg text-xs font-medium"
+            style="background: var(--color-surface-light); color: var(--color-text-secondary); border: 1px solid var(--color-border); cursor: pointer">
+          {{ recording() ? '⏺ Gravando... (parar)' : '🔴 Gravar' }}
+        </button>
+      }
+    }
+  </div>
+</div>
+}

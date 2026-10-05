@@ -7,7 +7,9 @@ export interface Meeting {
   title: string;
   description: string;
   location: string;
-  meetingDate: string;
+  estimatedMeetingDate: string;
+  startedAt?: string;
+  endedAt?: string;
   duration: number;
   status?: MeetingStatus;
   // MeetingResponseDTO (PATCH /cancel, GET /filter/*)
@@ -19,5 +21,6 @@ export interface Meeting {
   // (Participant.meeting é WRITE_ONLY, então não há loop de serialização)
   participants?: Omit<Participant, 'meeting'>[];
   user?: { id: number; name?: string; email?: string };
-  participation?: Participant;
+  participant?: Participant;
+  isPresent?: boolean;
 }

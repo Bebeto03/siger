@@ -68,10 +68,10 @@
                 <div class="flex flex-col items-center justify-center rounded-xl shrink-0"
                     style="width: 56px; height: 56px; background: var(--color-surface-light)">
                 <span class="text-lg font-extrabold leading-none" style="color: var(--color-text-primary)">
-                    {{ dayOf(m.meetingDate) }}
+                    {{ dayOf(m.estimatedMeetingDate) }}
                 </span>
                 <span class="text-xs mt-1" style="color: var(--color-text-muted)">
-                    {{ monthOf(m.meetingDate) }}
+                    {{ monthOf(m.estimatedMeetingDate) }}
                 </span>
                 </div>
 
@@ -85,15 +85,15 @@
                     {{ statusLabel(m.status!) }}
                     </span>
                     <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold"
-                        [style.background]="statusBgParticipation(m.participation?.participation!)"
-                        [style.color]="statusColorParticipation(m.participation?.participation!)">
-                    {{ statusLabelParticipation(m.participation?.participation!) }}
+                        [style.background]="statusBgParticipation(m.participant?.participation!)"
+                        [style.color]="statusColorParticipation(m.participant?.participation!)">
+                    {{ statusLabelParticipation(m.participant?.participation!) }}
                     </span>
                 </div>
                 <p class="text-xs mt-1 truncate" style="color: var(--color-text-muted)">{{ m.description }}</p>
                 <div class="flex gap-4 mt-2 flex-wrap">
                     <span class="text-xs flex items-center gap-1" style="color: var(--color-text-secondary)">
-                    🕐 {{ timeOf(m.meetingDate) }} · {{ m.duration }}min
+                    🕐 {{ timeOf(m.estimatedMeetingDate) }} · {{ m.duration }}min
                     </span>
                     <span class="text-xs flex items-center gap-1" style="color: var(--color-text-secondary)">
                     📍 {{ m.location }}
@@ -109,15 +109,32 @@
                 <!-- Actions -->
                 <div class="flex items-center gap-2 shrink-0" (click)="$event.stopPropagation()">
 
-                @let participation = m.participation?.participation;
-                @if (participation &&
-                    participation !== 'NAO_PARTICIPOU' &&
-                    participation !== 'PARTICIPOU') {
+                @if (canStart(m)) {
+                    <button (click)="startMeeting(m)"
+                        [disabled]="startingId() !== null"
+                        class="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                        style="background: var(--color-primary); color: #000000; border: none; cursor: pointer"
+                        [style.opacity]="startingId() !== null ? 0.6 : 1">
+                        {{ startingId() === m.id ? 'Iniciando...' : '▶ Iniciar' }}
+                    </button>
+                }
+                
+                @if (canEnter(m)) {
+                    <button (click)="enterMeeting(m)"
+                        [disabled]="enteringId() !== null"
+                        class="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                        style="background: var(--color-primary); color: #000000; border: none; cursor: pointer"
+                        [style.opacity]="enteringId() !== null ? 0.6 : 1">
+                        {{ enteringId() === m.id ? 'Iniciando...' : 'Entrar' }}
+                    </button>
+                }
+                
+                @if (canRegister(m.status!,m.participant?.participation!)) {
                     <button
                         (click)="registerAttendence(m)"
                         class="px-3 py-1.5 rounded-lg text-xs font-semibold"
                         style="background: var(--color-primary); color: #000000; border: none; cursor: pointer">
-                        {{ confirmAttendence(participation) }}
+                        {{ confirmAttendence(m.participant?.participation!) }}
                     </button>
                 }
 

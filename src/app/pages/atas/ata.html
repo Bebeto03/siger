@@ -72,10 +72,10 @@
                     <p class="text-sm" style="color: var(--color-text-muted)">Ata sem conteúdo ainda.</p>
                 }
 
-                @if (item.meeting.meetingDate) {
+                @if (item.meeting.estimatedMeetingDate) {
                     <div class="flex items-center gap-1 mt-2">
                     <span class="text-xs" style="color: var(--color-text-muted)">
-                        📅 {{ formatDate(item.meeting!.meetingDate) }}
+                        📅 {{ formatDate(item.meeting!.estimatedMeetingDate) }}
                     </span>
                     </div>
                 }

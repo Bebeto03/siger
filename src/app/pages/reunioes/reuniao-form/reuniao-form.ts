@@ -73,7 +73,8 @@ export class ReuniaoForm implements OnInit {
 
   form: Omit<Meeting, 'id' | 'createdAt' | 'updatedAt'> = {
     title: '', description: '', location: '',
-    meetingDate: '', duration: 60,
+    estimatedMeetingDate: '', duration: 60,
+    isPresent: true
   };
 
   formDate = '';
@@ -102,10 +103,11 @@ export class ReuniaoForm implements OnInit {
     return [
       { key: 'Título',        value: this.form.title    || '—'                              },
       { key: 'Data / Hora',   value: dateLabel                                              },
-      { key: 'Duração',       value: this.form.duration ? `${this.form.duration} min` : '—'},
+      { key: 'Duração',       value: this.form.duration ? `${this.form.duration} min` : '—' },
       { key: 'Local',         value: this.form.location || '—'                              },
+      { key: 'Modalidade',    value: this.form.isPresent ? `Presencial` : `Remoto`          },
       { key: 'Participantes', value: `${this.formParticipants.length} convidado(s)`         },
-      { key: 'Pautas',        value: `${this.formTopics.length} item(s)`                   },
+      { key: 'Pautas',        value: `${this.formTopics.length} item(s)`                    },
     ];
   }
 
@@ -133,9 +135,9 @@ export class ReuniaoForm implements OnInit {
       try {
         const m = await this.meetingService.buscar(this.editId);
         this.form = { title: m.title, description: m.description, location: m.location,
-                      meetingDate: m.meetingDate, duration: m.duration, status: m.status };
-        if (m.meetingDate) {
-          const d = new Date(m.meetingDate);
+                      estimatedMeetingDate: m.estimatedMeetingDate, duration: m.duration, status: m.status, isPresent: m.isPresent };
+        if (m.estimatedMeetingDate) {
+          const d = new Date(m.estimatedMeetingDate);
           this.formDate = d.toISOString().substring(0, 10);
           this.formTime = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
         }
@@ -200,14 +202,15 @@ export class ReuniaoForm implements OnInit {
   async submit(): Promise<void> {
     this.saving.set(true);
     try {
-      const meetingDate = `${this.formDate}T${this.formTime}:00`;
+      const estimatedMeetingDate = `${this.formDate}T${this.formTime}:00`;
 
       if (this.isEdit && this.editId) {
         const updateDTO: MeetingUpdateDTO = {
-          meetingDate,
+          estimatedMeetingDate,
           title:       this.form.title,
           description: this.form.description,
           location:    this.form.location,
+          isPresent:   this.form.isPresent,
           duration:    this.form.duration,
           status:      this.form.status,
         };
@@ -220,10 +223,11 @@ export class ReuniaoForm implements OnInit {
         const me = await this.userService.buscarMe();
         const createDTO: MeetingCreateDTO = {
           user:        { id: me.id },
-          meetingDate,
+          estimatedMeetingDate,
           title:       this.form.title,
           description: this.form.description,
           location:    this.form.location,
+          isPresent:   this.form.isPresent,
           duration:    this.form.duration,
         };
         const meeting = await this.meetingService.criar(createDTO);
