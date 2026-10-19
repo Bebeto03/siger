@@ -41,11 +41,16 @@ export class Login {
   private userService = inject(UserService);
   private router      = inject(Router);
   private notify      = inject(NotificationService);
+  
+  cpf = '';
+  telefone = '';
+
 
   activeTab = signal<'login' | 'register'>('login');
   loading   = signal(false);
   showPass  = signal(false);
-
+  showPassConfirm  = signal(false);
+  
   loginForm = this.fb.group({
     email:    ['', [Validators.required, Validators.email]],
     password: ['', Validators.required],
@@ -71,13 +76,13 @@ export class Login {
       iconPath: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2', iconExtra: 'M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
     },
     {
-      key: 'cpf', label: 'CPF', type: 'text', placeholder: '00000000000',
-      error: 'CPF inválido.', maxLength: 11,
+      key: 'cpf', label: 'CPF', type: 'text', placeholder: '000.000.000-00',
+      error: 'CPF inválido.', maxLength: 14,
       iconPath: 'M1 4h22v16H1zM1 10h22',
     },
     {
-      key: 'phone', label: 'TELEFONE', type: 'text', placeholder: '11999999999',
-      error: 'Telefone deve ter 10 ou 11 dígitos.', maxLength: 11,
+      key: 'phone', label: 'TELEFONE', type: 'text', placeholder: '(11) 99999-9999',
+      error: 'Telefone deve ter 10 ou 11 dígitos.', maxLength: 15,
       iconPath: 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13 19.79 19.79 0 0 1 1.61 4.46 2 2 0 0 1 3.59 2.23h3a2 2 0 0 1 2 1.72 12.05 12.05 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6 6l.92-.92a2 2 0 0 1 2.11-.45 12.05 12.05 0 0 0 2.81.7A2 2 0 0 1 21.73 17z',
     },
     {
@@ -106,16 +111,28 @@ export class Login {
   }
 
   async onRegister(): Promise<void> {
-    if (this.registerForm.invalid) { this.registerForm.markAllAsTouched(); return; }
+    if (this.registerForm.invalid) {
+      this.registerForm.markAllAsTouched();
+      return;
+    }
+
     this.loading.set(true);
+
     try {
-      const { confirmPassword, ...payload } = this.registerForm.value as any;
+      const { confirmPassword, ...payload } =
+        this.registerForm.value as any;
+
+      console.log(payload);
+
       await this.userService.register(payload);
+
       this.notify.success('Conta criada! Faça login para continuar.');
       this.activeTab.set('login');
       this.registerForm.reset({ type: 'PARTICIPANTE' });
     } catch {
-      this.notify.error('Erro ao criar conta. Verifique os dados e tente novamente.');
+      this.notify.error(
+        'Erro ao criar conta. Verifique os dados e tente novamente.'
+      );
     } finally {
       this.loading.set(false);
     }
@@ -137,4 +154,57 @@ export class Login {
     }
     return '';
   }
+
+  
+  onInputMask(event: Event, field: string): void {
+    const input = event.target as HTMLInputElement;
+    const control = this.registerForm.get(field);
+
+    if (!control || (field !== 'cpf' && field !== 'phone')) {
+      return;
+    }
+
+    const maxDigits = field === 'cpf' ? 11 : 11;
+    const digits = input.value.replace(/\D/g, '').slice(0, maxDigits);
+
+    // Salva somente os números no FormControl
+    control.setValue(digits, { emitEvent: false });
+
+    // Exibe o valor formatado no input
+    input.value = field === 'cpf'
+      ? this.maskCpf(digits)
+      : this.maskPhone(digits);
+  }
+
+
+  maskCpf(value: string): string {
+    return value
+      .replace(/\D/g, '')
+      .slice(0, 11)
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  }
+
+  
+  maskPhone(value: string): string {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+
+    if (!digits) return '';
+    if (digits.length <= 2) return `(${digits}`;
+
+    const ddd = digits.slice(0, 2);
+    const number = digits.slice(2);
+
+    if (number.length <= 4) {
+      return `(${ddd}) ${number}`;
+    }
+
+    if (digits.length <= 10) {
+      return `(${ddd}) ${number.slice(0, 4)}-${number.slice(4)}`;
+    }
+
+    return `(${ddd}) ${number.slice(0, 5)}-${number.slice(5)}`;
+  }
+
 }
