@@ -34,15 +34,20 @@ export class TaskService {
   }
 
   criar(data: TaskCreateDTO): Promise<Task> {
+    console.log(data)
     return firstValueFrom(
-      this.http.post<Task>(this.api, data, {
+      this.http.post<Task>(`${this.api}/create`, data, {
         context: new HttpContext().set(SKIP_ERROR_NAVIGATION, true),
       })
     );
   }
 
-  editar(id: number, data: Partial<Task>): Promise<Task> {
-    return firstValueFrom(this.http.put<Task>(`${this.api}/${id}`, data));
+  editarStatus(id: number, status: string): Promise<Task> {
+    return firstValueFrom(this.http.put<Task>(`${this.api}/status/${id}`, 
+      JSON.stringify(status),{headers: {'Content-Type': 'application/json'}}));
+  }
+  editarEntity(id: number, data: Partial<Task>): Promise<Task> {
+    return firstValueFrom(this.http.put<Task>(`${this.api}/update/${id}`, data));
   }
 
   excluir(id: number): Promise<void> {
