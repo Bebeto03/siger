@@ -7,8 +7,8 @@
         <p class="text-sm mt-0.5" style="color: var(--color-text-muted)">Visão geral das suas reuniões e tarefas</p>
     </div>
     @if (podecriarReuniao()) {
-    <button class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white"
-            style="background: var(--color-primary); border: none; cursor: pointer"
+    <button class="btn-new flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold"
+        style="background: var(--color-primary); color: #000; border: none; cursor: pointer; transition: background 0.15s"
             (click)="router.navigate(['/reunioes/nova'])">
         + Nova Reunião
     </button>
@@ -190,12 +190,12 @@
             </div>
 
             <!-- Confirmações Pendentes -->
-            <div class="rounded-xl p-5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
             <h3 class="text-sm font-bold mb-4" style="color: var(--color-text-primary)">Confirmações Pendentes</h3>
+            <div class="rounded-xl p-5" style="background: var(--color-surface); border: 1px solid var(--color-border)">
             @for (m of pendingConfirmations(); track m.id; let last = $last) {
                 <div class="flex items-center justify-between py-2.5"
                     [style.border-bottom]="!last ? '1px solid var(--color-border)' : 'none'">
-                <span class="text-sm truncate mr-3" style="color: var(--color-text-secondary)">{{ m.title }}</span>
+                <span class="font-semibold" style="color: var(--color-text-primary)">{{ m.title }}</span>
                 <span class="px-2 py-0.5 rounded-full text-xs font-semibold shrink-0"
                         style="background: rgba(245,158,11,0.15); color: var(--color-warning)">
                     {{ pendingConfirmationCount()[m.id!] }} sem resposta

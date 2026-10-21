@@ -122,6 +122,7 @@ export function contarConfirmacoesPendentes(meetings: Meeting[]): Record<number,
     if (m.id == null) continue;
     const pendentes = (m.participants ?? []).filter(p => !p.participation || p.participation === 'TALVEZ').length;
     if (pendentes > 0) out[m.id] = pendentes;
+    console.log(m)
   }
   return out;
 }

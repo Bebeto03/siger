@@ -23,6 +23,7 @@ import {
   selectTarefasPendentes,
   selectTarefasRecentes,
 } from '../../store/indicadores';
+import { ParticipantService } from '../../core/services/participant.service';
 
 /** Variação percentual entre o mês atual e o anterior; null quando não dá para comparar. */
 function variacaoPct(atual: number | null, anterior: number | null): number | null {
@@ -47,6 +48,7 @@ export class Dashboard implements OnInit {
   readonly router = inject(Router);
   private store   = inject(Store);
   private auth    = inject(AuthService);
+  private participantService = inject(ParticipantService);
 
   // ─── Estado vindo do store (NgRx) ─────────────────────────────────────────
   loading = this.store.selectSignal(selectLoading);

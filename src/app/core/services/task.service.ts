@@ -29,6 +29,10 @@ export class TaskService {
     return this.listar().then(all => all.filter(t => t.meeting?.id === meetingId));
   }
 
+  listarPorReuniaoPorUsuario(): Promise<Task[]> {
+    return firstValueFrom(this.http.get<Task[]>(`${this.api}/meeting/me`));
+  }
+
   buscar(id: number): Promise<Task> {
     return firstValueFrom(this.http.get<Task>(`${this.api}/${id}`));
   }

@@ -1,10 +1,12 @@
 import { inject, Injectable } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { catchError, exhaustMap, forkJoin, from, map, of } from 'rxjs';
+import { catchError, exhaustMap, forkJoin, from, map, of, switchMap } from 'rxjs';
 import { MeetingService } from '../../core/services/meeting.service';
 import { TaskService } from '../../core/services/task.service';
 import { DashboardService } from '../../core/services/dashboard.service';
 import { IndicadoresActions } from './indicadores.actions';
+import { ParticipantService } from '../../core/services/participant.service';
+
 
 const sanitize = (v: number | null): number | null => (v != null && isFinite(v) ? v : null);
 
@@ -12,6 +14,7 @@ const sanitize = (v: number | null): number | null => (v != null && isFinite(v) 
 export class IndicadoresEffects {
   private actions$         = inject(Actions);
   private meetingService   = inject(MeetingService);
+  private participantService   = inject(ParticipantService);
   private taskService      = inject(TaskService);
   private dashboardService = inject(DashboardService);
 
@@ -20,9 +23,14 @@ export class IndicadoresEffects {
       ofType(IndicadoresActions.carregar),
       exhaustMap(() =>
         forkJoin({
-          meetings:          from(this.meetingService.listarMinhasReunioes()),
+          meetings: from(this.meetingService.listarMinhasReunioes())
+                    .pipe(switchMap(
+                      meetings => forkJoin(
+                        meetings.map(m => m.id != null? from(this.participantService.listarPorReuniao(m.id)).pipe
+                        (map(participants => ({...m,participants})),
+                        catchError(() => of({...m,participants: []}))) : of({...m,participants: []}))))),
           // tarefas e KPIs do backend degradam para vazio/null sem derrubar a carga
-          tasks:             from(this.taskService.listar()).pipe(catchError(() => of([]))),
+          tasks:             from(this.taskService.listarPorReuniaoPorUsuario()).pipe(catchError(() => of([]))),
           attendanceGeneral: from(this.dashboardService.attendanceGeneral()),
           averageTime:       from(this.dashboardService.averageTime()),
         }).pipe(

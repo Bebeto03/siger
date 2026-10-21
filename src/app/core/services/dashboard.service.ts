@@ -11,7 +11,7 @@ export class DashboardService {
 
   attendanceGeneral(): Promise<number | null> {
     return firstValueFrom(
-      this.http.get<number>(`${this.api}/attendance/meeting/general`).pipe(
+      this.http.get<number>(`${this.api}/attendance/meeting/me`).pipe(
         timeout(8000),
         catchError(() => of(null))
       )
@@ -20,7 +20,7 @@ export class DashboardService {
 
   averageTime(): Promise<number | null> {
     return firstValueFrom(
-      this.http.get<number>(`${this.api}/average-time`).pipe(
+      this.http.get<number>(`${this.api}/average-time/me`).pipe(
         timeout(8000),
         catchError(() => of(null))
       )
