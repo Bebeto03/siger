@@ -9,6 +9,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { ToastComponent } from '../../../shared/components/toast/toast';
 import { ParticipantParticipation } from '../../../core/models/participant.model';
 import { ParticipantService } from '../../../core/services/participant.service';
+import { UserService } from '../../../core/services/user.service';
 
 @Component({
   selector: 'app-reuniao-list',
@@ -27,6 +28,7 @@ import { ParticipantService } from '../../../core/services/participant.service';
 })
 export class ReuniaoList implements OnInit {
   private meetingService = inject(MeetingService);
+  private userService = inject(UserService);
   private participantService = inject(ParticipantService);
   private notify         = inject(NotificationService);
   private logService     = inject(LogService);
@@ -99,17 +101,42 @@ export class ReuniaoList implements OnInit {
 
   async load(): Promise<void> {
     this.loading.set(true);
+
     try {
-      if(this.auth.temPermissao('ROLE_ADMIN')){
-        this.meetings.set(await this.meetingService.listar());
-      }else{
-        this.meetings.set(await this.meetingService.listarMinhasReunioes())
-      }
+      const meetings = this.auth.temPermissao('ROLE_ADMIN')
+        ? await this.meetingService.listar()
+        : await this.meetingService.listarMinhasReunioes();
+
+      this.meetings.set(this.ordenarReunioes(meetings));
     } catch {
       this.notify.error('Erro ao carregar reuniões.');
     } finally {
       this.loading.set(false);
     }
+  }
+
+  private ordenarReunioes(meetings: Meeting[]): Meeting[] {
+    const prioridade: Record<MeetingStatus, number> = {
+      EM_ANDAMENTO: 1,
+      NAO_INICIADO: 2,
+      CONCLUIDO: 3,
+      CANCELADO: 4
+    };
+
+    return [...meetings].sort((a, b) => {
+      const prioridadeA = prioridade[a.status ?? 'NAO_INICIADO'];
+      const prioridadeB = prioridade[b.status ?? 'NAO_INICIADO'];
+
+      if (prioridadeA !== prioridadeB) {
+        return prioridadeA - prioridadeB;
+      }
+
+      // Dentro do mesmo status, ordena pela data estimada mais próxima.
+      return (
+        new Date(a.estimatedMeetingDate).getTime() -
+        new Date(b.estimatedMeetingDate).getTime()
+      );
+    });
   }
 
   goCreate(): void  { this.router.navigate(['/reunioes/nova']); }
@@ -250,7 +277,7 @@ export class ReuniaoList implements OnInit {
   canStart(meeting: Meeting){
     return meeting.isPresent &&
            meeting.status === 'NAO_INICIADO' && 
-           this.isOrganizer();
+           meeting.organizerEmail === this.auth.currentUser()?.sub;
   }
 
   async startMeeting(meeting: Meeting) {

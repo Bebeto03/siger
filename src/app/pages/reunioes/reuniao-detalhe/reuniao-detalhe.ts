@@ -37,7 +37,7 @@ type ActiveTab = 'info' | 'participants' | 'topics' | 'minutes' | 'tasks';
   `],
   templateUrl: './reuniao-detalhe.html'
 })
-export class ReuniaoDetalhe implements OnInit, OnDestroy {
+export class ReuniaoDetalhe implements OnInit {
   private route              = inject(ActivatedRoute);
   private router             = inject(Router);
   private meetingService     = inject(MeetingService);
@@ -112,8 +112,6 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
       this.userService.listar().then(u => this.allUsers.set(u)).catch(() => {});
     }
   }
-
-  ngOnDestroy(): void { this.stopTimer(); }
 
   private async loadParticipants(meetingId: number): Promise<void> {
     this.loadingParticipants.set(true);
@@ -276,39 +274,6 @@ export class ReuniaoDetalhe implements OnInit, OnDestroy {
       console.error('Falha ao gerar resumo com IA', err);
       // aqui pode entrar um toast/snackbar para avisar o usuário
     }
-  }
-
-  // ── Timer ───────────────────────────────────────────────────────────────────
-
-  startTimer(t: Topic): void {
-    if (t.concluded) return;
-    this.stopTimer();
-    const minutes = t.timer ?? 5;
-    this.activeTimer.set({ topicId: t.id!, remaining: minutes * 60 });
-    this.timerInterval = setInterval(() => {
-      const current = this.activeTimer();
-      if (!current) return;
-      if (current.remaining <= 0) {
-        this.notify.info(`Tempo da pauta "${t.title}" encerrado!`);
-        this.stopTimer();
-        return;
-      }
-      this.activeTimer.set({ ...current, remaining: current.remaining - 1 });
-    }, 1000);
-  }
-
-  stopTimer(): void {
-    if (this.timerInterval) {
-      clearInterval(this.timerInterval);
-      this.timerInterval = null;
-    }
-    this.activeTimer.set(null);
-  }
-
-  formatTimer(seconds: number): string {
-    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-    const s = (seconds % 60).toString().padStart(2, '0');
-    return `${m}:${s}`;
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────

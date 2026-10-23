@@ -15,6 +15,7 @@ export interface Meeting {
   // MeetingResponseDTO (PATCH /cancel, GET /filter/*)
   organizerId?: number;
   organizerName?: string;
+  organizerEmail?: string;
   createdAt?: string;
   updatedAt?: string;
   // Entidade direta (GET /findAll, GET /{id}) — o backend embute os participantes

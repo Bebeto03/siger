@@ -39,56 +39,8 @@
     <!-- Card -->
     <div class="rounded-xl p-6" style="background: var(--color-surface); border: 1px solid var(--color-border)">
 
-        <!-- Step 1: Informações -->
+        <!-- Step 1: Participantes -->
         @if (step() === 1) {
-        <h3 class="text-base font-bold mb-5" style="color: var(--color-text-primary)">Informações da Reunião</h3>
-
-        <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Título *</label>
-        <input [(ngModel)]="form.title" placeholder="Ex: Sprint Planning S4" class="w-full px-3 py-2.5 mb-4" />
-
-        <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Descrição</label>
-        <textarea [(ngModel)]="form.description" rows="3" placeholder="Descreva o objetivo da reunião..."
-            class="w-full px-3 py-2.5 mb-4 resize-y"></textarea>
-
-        <div class="flex gap-4">
-            <div class="flex-1">
-            <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Data *</label>
-            <input type="date" [(ngModel)]="formDate" class="w-full px-3 py-2.5 mb-4" />
-            </div>
-            <div class="flex-1">
-            <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Horário *</label>
-            <input type="time" [(ngModel)]="formTime" class="w-full px-3 py-2.5 mb-4" />
-            </div>
-            <div class="flex-1">
-            <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Duração (min) *</label>
-            <input type="number" [(ngModel)]="form.duration" placeholder="60" min="1" class="w-full px-3 py-2.5 mb-4" />
-            </div>
-        </div>
-
-        <div class="flex gap-4">
-            <div class="flex-1">
-            <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Local *</label>
-            <input [(ngModel)]="form.location" placeholder="Sala ou link da reunião" class="w-full px-3 py-2.5 mb-4" />
-            </div>
-            <div class="flex-1">
-                <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Modalidade *</label>
-                <div class="flex items-center gap-6 py-2.5 mb-4">
-                    <label class="flex items-center gap-2 cursor-pointer text-sm" style="color: var(--color-text-primary)">
-                        <input type="radio" name="modalidade" [value]="true" [(ngModel)]="form.isPresent" class="w-4 h-4" />
-                        Presencial
-                    </label>
-                    
-                    <label class="flex items-center gap-2 cursor-pointer text-sm" style="color: var(--color-text-primary)">
-                        <input type="radio" name="modalidade" [value]="false" [(ngModel)]="form.isPresent" class="w-4 h-4" />
-                        Remoto
-                    </label>
-                </div>
-            </div>
-        </div>
-        }
-
-        <!-- Step 2: Participantes -->
-        @if (step() === 2) {
         <h3 class="text-base font-bold mb-5" style="color: var(--color-text-primary)">Participantes</h3>
 
         <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Buscar usuários</label>
@@ -144,6 +96,99 @@
         }
         }
 
+        <!-- Step 2: Informações -->
+        @if (step() === 2) {
+        <h3 class="text-base font-bold mb-5" style="color: var(--color-text-primary)">Informações da Reunião</h3>
+
+        <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Título *</label>
+        <input [(ngModel)]="form.title" placeholder="Ex: Sprint Planning S4" class="w-full px-3 py-2.5 mb-4" />
+
+        <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Descrição</label>
+        <textarea [(ngModel)]="form.description" rows="3" placeholder="Descreva o objetivo da reunião..."
+            class="w-full px-3 py-2.5 mb-4 resize-y"></textarea>
+
+        <div class="flex gap-4">
+            <div class="flex-1">
+            <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Data *</label>
+            <input type="date" [(ngModel)]="formDate" (ngModelChange)="aoAlterarData($event)" class="w-full px-3 py-2.5 mb-4" />
+            </div>
+            <div class="flex-1 relative" #horarioWrapper>
+            <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">
+                Horário *
+            </label>
+
+            <!-- Gatilho -->
+            <button
+                type="button"
+                (click)="toggleDropdown()"
+                [disabled]="horariosDisponiveis.length === 0"
+                class="w-full h-10 px-3 flex items-center justify-between rounded-md border text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                style="
+                border-color: var(--color-border);
+                background-color: var(--color-surface);
+                "
+                [style.color]="formTime ? 'var(--color-text-primary)' : 'var(--color-text-secondary)'"
+            >
+                <span>
+                {{ formTime || (horariosDisponiveis.length ? 'Selecione um horário' : 'Selecione uma data primeiro') }}
+                </span>
+                <span class="transition-transform" [class.rotate-180]="dropdownAberto">▾</span>
+            </button>
+
+            <!-- Lista suspensa -->
+            @if (dropdownAberto) {
+                <div
+                class="absolute left-0 right-0 mt-1 z-20 max-h-52 overflow-y-auto rounded-md border"
+                style="
+                    border-color: var(--color-border);
+                    background-color: var(--color-surface);
+                "
+                >
+                @for (horario of horariosDisponiveis; track horario) {
+                    <button
+                    type="button"
+                    (click)="selecionarHorario(horario); dropdownAberto = false"
+                    class="w-full px-3 py-2.5 text-left text-sm flex justify-between items-center transition-colors hover:opacity-80"
+                    [style.background-color]="formTime === horario ? 'var(--color-primary)' : 'transparent'"
+                    [style.color]="formTime === horario ? '#ffffff' : 'var(--color-text-primary)'"
+                    >
+                    {{ horario }}
+                    @if (formTime === horario) {
+                        <span>✓</span>
+                    }
+                    </button>
+                }
+                </div>
+            }
+            </div>
+            <div class="flex-1">
+            <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Duração (min) *</label>
+            <input type="number" [(ngModel)]="form.duration" placeholder="60" min="1" class="w-full px-3 py-2.5 mb-4" />
+            </div>
+        </div>
+
+        <div class="flex gap-4">
+            <div class="flex-1">
+            <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Local *</label>
+            <input [(ngModel)]="form.location" placeholder="Sala ou link da reunião" class="w-full px-3 py-2.5 mb-4" />
+            </div>
+            <div class="flex-1">
+                <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Modalidade *</label>
+                <div class="flex items-center gap-6 py-2.5 mb-4">
+                    <label class="flex items-center gap-2 cursor-pointer text-sm" style="color: var(--color-text-primary)">
+                        <input type="radio" name="modalidade" [value]="true" [(ngModel)]="form.isPresent" class="w-4 h-4" />
+                        Presencial
+                    </label>
+                    
+                    <label class="flex items-center gap-2 cursor-pointer text-sm" style="color: var(--color-text-primary)">
+                        <input type="radio" name="modalidade" [value]="false" [(ngModel)]="form.isPresent" class="w-4 h-4" />
+                        Remoto
+                    </label>
+                </div>
+            </div>
+        </div>
+        }
+
         <!-- Step 3: Pautas -->
         @if (step() === 3) {
         <h3 class="text-base font-bold mb-5" style="color: var(--color-text-primary)">Pautas da Reunião</h3>
@@ -185,7 +230,7 @@
             }
         </div>
 
-        <button (click)="addTopic()" class="w-full py-2.5 rounded-lg text-sm font-semibold"
+        <button (click)="addTopic()" class="w-full py-2.5 rounded-lg text-sm font-semibold" [disabled]="bloquearAdicionarPauta"
             style="background: var(--color-surface-light); color: var(--color-text-secondary); border: 1px solid var(--color-border); cursor: pointer">
             + Adicionar Pauta
         </button>
