@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, computed } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Store } from '@ngrx/store';
 import { ChartData, ChartOptions } from 'chart.js';
 import { NotificationService } from '../../core/services/notification.service';
@@ -23,6 +24,7 @@ import {
   selectTaxaConclusao,
   selectTotalReunioes,
 } from '../../store/indicadores';
+import { MetricsExportService } from '../../core/services/metrics-export.service';
 
 const HOURS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00'];
 const DAYS  = ['Seg','Ter','Qua','Qui','Sex'];
@@ -30,7 +32,7 @@ const DAYS  = ['Seg','Ter','Qua','Qui','Sex'];
 @Component({
   selector: 'app-relatorio-list',
   standalone: true,
-  imports: [ToastComponent, DecimalPipe, ChartComponent],
+  imports: [ToastComponent, DecimalPipe, ChartComponent, FormsModule],
   styles: [`
     .heat-cell { border-radius: 4px; cursor: default; transition: opacity 0.15s; }
     .heat-cell:hover { opacity: 0.7; }
@@ -42,6 +44,7 @@ const DAYS  = ['Seg','Ter','Qua','Qui','Sex'];
 })
 export class RelatorioList implements OnInit {
   readonly notify = inject(NotificationService);
+  readonly metricsService = inject(MetricsExportService);
   private store = inject(Store);
 
   // ─── Estado vindo do store (NgRx) ─────────────────────────────────────────
@@ -64,6 +67,8 @@ export class RelatorioList implements OnInit {
 
   readonly hours      = HOURS;
   readonly heatLegend = [0.1, 0.25, 0.4, 0.55, 0.7];
+
+  comGraficos = true;
 
   avgDuration = computed(() => {
     const b = this.averageBackend();
@@ -245,5 +250,166 @@ export class RelatorioList implements OnInit {
 
   recarregar(): void {
     this.store.dispatch(IndicadoresActions.carregar());
+  }
+
+  
+  exportPdf(): void {
+    if (this.loading()) {
+      this.notify.error('Aguarde o carregamento das métricas.');
+      return;
+    }
+
+    if (this.error()) {
+      this.notify.error('Não foi possível carregar as métricas.');
+      return;
+    }
+
+    if (!this.loaded()) {
+      this.notify.error('As métricas ainda não foram carregadas.');
+      return;
+    }
+
+    const reunioesMes = this.reunioesPorMes();
+    const comparecimento = this.comparecimentoMes();
+    const duracao = this.duracaoMes();
+    const reunioesStatus = this.reunioesPorStatus();
+    const tarefasStatus = this.tarefasPorStatus();
+
+    // Novas métricas: comparecimento por mês/horário e
+    // frequência dos horários das reuniões.
+    const comparecimentoPorHorarioMes: Record<string, number> = {};
+    const frequenciaPorHorario: Record<string, number> = {};
+
+    // Substitua this.meetings() pela fonte que contém
+    // a lista de reuniões no seu componente, se necessário.
+    const meetings = this.meetings() ?? [];
+
+    for (const meeting of meetings) {
+      if (!meeting.estimatedMeetingDate) {
+        continue;
+      }
+
+      const data = new Date(meeting.estimatedMeetingDate);
+
+      if (Number.isNaN(data.getTime())) {
+        continue;
+      }
+
+      const hora = `${String(data.getHours()).padStart(2, '0')}h`;
+
+      // Frequência: conta uma reunião por horário.
+      frequenciaPorHorario[hora] =
+        (frequenciaPorHorario[hora] ?? 0) + 1;
+
+      // Comparecimento: agrupa os participantes com status SIM
+      // por mês e horário da reunião.
+      const mes = data.toLocaleDateString('pt-BR', {
+        month: 'short',
+        year: 'numeric',
+      });
+
+      const chave = `${mes} - ${hora}`;
+
+      const participantesPresentes = (
+        meeting.participants ?? []
+      ).filter(
+        (participant: any) =>
+          participant.participated === 'SIM'
+      ).length;
+
+      comparecimentoPorHorarioMes[chave] =
+        (comparecimentoPorHorarioMes[chave] ?? 0) +
+        participantesPresentes;
+    }
+
+    // Monta o objeto com os dados atuais do NgRx.
+    const metrics = {
+      totalMeetings: this.totalMeetings() ?? 0,
+      attendanceBackend: this.attendanceBackend() ?? 0,
+      averageBackend: this.averageBackend() ?? 0,
+      averageLocal: this.averageLocal() ?? 0,
+      taxaConclusao: this.taxaConclusao() ?? 0,
+
+      reunioesPorMes: Object.fromEntries(
+        reunioesMes.labels.map((mes, index) => [
+          mes,
+          (reunioesMes.realizadas[index] ?? 0) +
+            (reunioesMes.canceladas[index] ?? 0),
+        ])
+      ),
+
+      comparecimentoMes: Object.fromEntries(
+        comparecimento.labels.map((mes, index) => [
+          mes,
+          comparecimento.taxa[index] ?? 0,
+        ])
+      ),
+
+      duracaoMes: Object.fromEntries(
+        duracao.labels.map((mes, index) => [
+          mes,
+          duracao.minutos[index] ?? 0,
+        ])
+      ),
+
+      reunioesPorStatus: Object.fromEntries(
+        reunioesStatus.labels.map((status, index) => [
+          status,
+          reunioesStatus.values[index] ?? 0,
+        ])
+      ),
+
+      tarefasPorStatus: Object.fromEntries(
+        tarefasStatus.labels.map((status, index) => [
+          status,
+          tarefasStatus.values[index] ?? 0,
+        ])
+      ),
+
+      // Novas métricas enviadas ao backend.
+      comparecimentoPorHorarioMes,
+      frequenciaPorHorario,
+    };
+
+    const exportar = this.comGraficos
+      ? this.metricsService.exportMetricsGraphics(metrics)
+      : this.metricsService.exportMetrics(metrics);
+
+    // Abre a aba durante o clique do usuário, evitando bloqueio de pop-up
+    const novaAba = window.open('about:blank', '_blank');
+
+    if (!novaAba) {
+      this.notify.error(
+        'Permita pop-ups neste site para abrir o PDF em uma nova aba.'
+      );
+      return;
+    }
+
+    exportar.subscribe({
+      next: (pdf: Blob) => {
+        const url = window.URL.createObjectURL(pdf);
+        const link = document.createElement('a');
+
+        link.href = url;
+        
+        const agora = new Date();
+        const timestamp = `${String(agora.getHours()).padStart(2, '0')}-${String(agora.getMinutes()).padStart(2, '0')}-${String(agora.getSeconds()).padStart(2, '0')}_${String(agora.getDate()).padStart(2, '0')}-${String(agora.getMonth() + 1).padStart(2, '0')}-${agora.getFullYear()}`;
+        const fileName = `relatorio-metricas-${timestamp }${this.comGraficos ? '-graficos' : ''}.pdf`;
+
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+
+        link.remove();
+        novaAba.location.href = url;
+        window.URL.revokeObjectURL(url);
+      },
+      error: (error) => {
+        novaAba.close();
+
+        console.error('Erro ao exportar relatório:', error);
+        this.notify.error('Erro ao gerar o relatório PDF.');
+      },
+    });
   }
 }

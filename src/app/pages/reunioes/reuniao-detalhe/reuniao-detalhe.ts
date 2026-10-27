@@ -18,6 +18,7 @@ import { TaskService } from '../../../core/services/task.service';
 import { Task, TaskStatus } from '../../../core/models/task.model';
 import { UserService } from '../../../core/services/user.service';
 import { User } from '../../../core/models/user.model';
+import { MinutesExportService } from '../../../core/services/minutes-export.service';
 
 type ActiveTab = 'info' | 'participants' | 'topics' | 'minutes' | 'tasks';
 
@@ -49,6 +50,7 @@ export class ReuniaoDetalhe implements OnInit {
   private logService         = inject(LogService);
   private auth               = inject(AuthService);
   private notify             = inject(NotificationService);
+  private minutesExport      = inject(MinutesExportService);
 
   meeting             = signal<Meeting | null>(null);
   participants        = signal<Participant[]>([]);
@@ -259,8 +261,36 @@ export class ReuniaoDetalhe implements OnInit {
 
   exportPdf(): void {
     const id = this.meeting()?.id;
+
     if (!id) return;
-    window.open(`${environment.apiUrl}/pdf/meeting/${id}`, '_blank');
+
+    this.minutesExport.exportMinutes(id).subscribe({
+      next: (pdf: Blob) => {
+        const url = window.URL.createObjectURL(pdf);
+        const link = document.createElement('a');
+
+        const agora = new Date();
+        const timestamp = `${String(agora.getHours()).padStart(2, '0')}-${String(agora.getMinutes()).padStart(2, '0')}-${String(agora.getSeconds()).padStart(2, '0')}_${String(agora.getDate()).padStart(2, '0')}-${String(agora.getMonth() + 1).padStart(2, '0')}-${agora.getFullYear()}`;
+        const fileName = `ata-reuniao_${id}_${timestamp}.pdf`;
+
+        link.href = url;
+        link.download = fileName;
+
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        window.open(url)
+
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+        }, 1000);
+      },
+      error: (error) => {
+        console.error('Erro ao baixar o PDF:', error);
+        this.notify.error('Não foi possível baixar o PDF.');
+      }
+    });
   }
 
   async summaryAi(): Promise<void> {
