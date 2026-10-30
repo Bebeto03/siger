@@ -275,8 +275,7 @@ export class ReuniaoList implements OnInit {
   }
 
   canStart(meeting: Meeting){
-    return meeting.isPresent &&
-           meeting.status === 'NAO_INICIADO' && 
+    return meeting.status === 'NAO_INICIADO' && 
            meeting.organizerEmail === this.auth.currentUser()?.sub;
   }
 
@@ -286,7 +285,7 @@ export class ReuniaoList implements OnInit {
     this.startingId.set(meeting.id!);
     try {
       await this.meetingService.iniciar(meeting.id!);
-      this.router.navigate(['/reunioes', meeting.id, 'sala']);
+      this.router.navigate(['/reunioes', meeting.id, 'sala',meeting.isPresent? 'presencial' : 'remota']);
     } catch (err) {
       // exibir toast com a mensagem do erro
     } finally {
@@ -295,8 +294,7 @@ export class ReuniaoList implements OnInit {
   }
   
   canEnter(meeting: Meeting){
-    return meeting.isPresent &&
-    meeting.status === 'EM_ANDAMENTO'
+    return meeting.status === 'EM_ANDAMENTO'
   }
 
   async enterMeeting(meeting: Meeting) {
@@ -304,7 +302,7 @@ export class ReuniaoList implements OnInit {
 
     this.enteringId.set(meeting.id!);
     try {
-      this.router.navigate(['/reunioes', meeting.id, 'sala']);
+      this.router.navigate(['/reunioes', meeting.id, 'sala',meeting.isPresent? 'presencial' : 'remota']);
     } catch (err) {
       // exibir toast com a mensagem do erro
     } finally {

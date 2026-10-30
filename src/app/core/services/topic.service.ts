@@ -45,4 +45,8 @@ export class TopicService {
   excluir(id: number): Promise<void> {
     return firstValueFrom(this.http.delete<void>(`${this.api}/${id}`));
   }
+
+  listaPorAta(meetingMinutesId: number): Promise<Topic[]> {
+    return firstValueFrom(this.http.get<Topic[]>(`${this.api}/${meetingMinutesId}/topics`));
+  }
 }

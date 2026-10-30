@@ -29,6 +29,7 @@ interface FormTopic {
   priority: TopicPriority;
   timer: number;
   orderIndex: number;
+  responsibleParticipantId: number | null;
 }
 
 @Component({
@@ -278,7 +279,9 @@ export class ReuniaoForm implements OnInit {
   }
 
   pautaValida(): boolean {
-    return this.formTopics.length > 0 && this.formTopics.every(t => !!t.title?.trim());
+    return this.formTopics.length > 0 
+        && this.formTopics.every(t => !!t.title?.trim()) 
+        && this.formTopics.every(t => !!t.responsibleParticipantId);
   }
 
   get canAdvance(): boolean {
@@ -336,7 +339,8 @@ export class ReuniaoForm implements OnInit {
           this.formTopics = (minutes.topics ?? []).map(t => ({
             title:      t.title,
             priority:   t.priority,
-            timer:      t.timer ?? 15,
+            timer:      t.time ?? 15,
+            responsibleParticipantId: t.responsibleParticipant?.id ?? null,
             orderIndex: t.orderIndex,
           }));
         }
@@ -395,6 +399,7 @@ export class ReuniaoForm implements OnInit {
       priority: 'MEDIA',
       timer: 15,
       orderIndex: this.formTopics.length + 1,
+      responsibleParticipantId: null,
     });
   }
 
@@ -488,18 +493,19 @@ export class ReuniaoForm implements OnInit {
 
     await Promise.all((minutes.topics ?? []).map(t => this.topicService.excluir(t.id!)));
     await Promise.all(
-      this.formTopics
-        .filter(t => t.title.trim())
-        .map(t => this.topicService.criar({
-          meetingMinutes: { id: minutes!.id! },
-          participant:    { id: myParticipant!.id! },
-          title:          t.title,
-          priority:       t.priority,
-          timer:          t.timer,
-          orderIndex:     t.orderIndex,
-          concluded:      false,
-        }))
-    );
+        this.formTopics
+            .filter(t => t.title.trim())
+            .map(t => {const responsible = participants.find(p => p.user.id === t.responsibleParticipantId);
+            return this.topicService.criar({
+                    meetingMinutes: { id: minutes!.id! },
+                    participant: {id: responsible?.id ?? myParticipant!.id!},
+                    title: t.title,
+                    priority: t.priority,
+                    timer: t.timer,
+                    orderIndex: t.orderIndex,
+                    concluded: false
+                });
+              }));
   }
 
   initials(name: string): string {

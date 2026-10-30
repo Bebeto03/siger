@@ -1,0 +1,232 @@
+@if (meeting(); as m) {
+<div class="flex flex-col h-full gap-4 p-6">
+
+  <!-- Cabeçalho -->
+  <div
+    class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 rounded-xl px-5 py-3 w-full"
+    style="background: var(--color-surface); border: 1px solid var(--color-border)">
+    <!-- Nome da reunião e tempo decorrido -->
+    <div class="flex flex-col items-start min-w-0">
+      <h2
+        class="text-base font-bold truncate max-w-full"
+        style="color: var(--color-text-primary)"
+      >
+        {{ m.title }}
+      </h2>
+
+      <span
+        class="text-xs mt-1"
+        [style.color]="overtimeMeeting() ? 'var(--color-danger)' : 'var(--color-text-secondary)'"
+      >
+        ⏱ {{ fmt(meetingElapsed()) }} / {{ fmt(m.duration * 60) }}
+      </span>
+    </div>
+
+    <!-- Aviso de atraso centralizado -->
+    <div class="flex justify-center">
+      @if (overtimeMeeting()) {
+        <div
+          class="flex items-center justify-center gap-2 px-5 py-3 rounded-xl shadow-md text-sm font-semibold text-center"
+          style="color: var(--color-danger); background: var(--color-surface); border: 1px solid var(--color-danger)"
+        >
+          <span class="text-lg">⚠️</span>
+          <span>
+            A reunião está atrasada
+            {{ warningTime(meetingOvertimeElapsed()) }}
+          </span>
+        </div>
+      }
+    </div>
+
+    <!-- Botão de encerrar -->
+    <div class="flex justify-end">
+      @if (isOrganizer()) {
+        <button
+          (click)="endMeeting()"
+          [disabled]="ending()"
+          class="shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-semibold"
+          style="background: rgba(239,68,68,0.1); color: var(--color-danger); border: 1px solid rgba(239,68,68,0.2); cursor: pointer"
+        >
+          {{ ending() ? 'Encerrando...' : '⏹ Encerrar reunião' }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="grid grid-cols-[260px_1fr_240px] gap-4 flex-1 min-h-0">
+
+    <!-- Pautas -->
+    <div class="rounded-xl p-4 overflow-y-auto"
+         style="background: var(--color-surface); border: 1px solid var(--color-border)">
+      <h3 class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: var(--color-text-secondary)">Pautas</h3>
+      @for (item of agenda(); track item.id; let i = $index) {
+        <div class="flex items-center gap-2 px-3 py-2 mb-2 rounded-lg text-sm"
+             [style.background]="item.status === 'active' ? 'rgba(34,184,207,0.12)' : 'transparent'"
+             [style.border]="item.status === 'active' ? '1px solid var(--color-primary)' : '1px solid transparent'"
+             [style.opacity]="item.status === 'done' ? 0.55 : 1"
+             style="color: var(--color-text-primary)">
+          <span>{{ item.status === 'done' ? '✔' : item.status === 'active' ? '▶' : '○' }}</span>
+          <span class="flex-1">{{ i + 1 }}. {{ item.title }}</span>
+          <span class="text-xs" style="color: var(--color-text-secondary)">{{ item.durationMin }}min</span>
+        </div>
+      }
+    </div>
+
+    <!-- Pauta atual -->
+    <div class="rounded-xl p-5 flex flex-col"
+         style="background: var(--color-surface); border: 1px solid var(--color-border)">
+      @if (current(); as c) {
+        <div class="grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-4 mb-4">
+
+      <!-- Nome da pauta -->
+          <div class="min-w-0">
+            <h3
+              class="text-lg font-bold truncate"
+              style="color: var(--color-text-primary)"
+            >
+              {{ c.title }}
+            </h3>
+          </div>
+
+          <!-- Nome do responsável -->
+          <div class="flex items-center gap-2 min-w-0">
+            <div
+              class="w-6 h-6 rounded-full flex items-center justify-center text-white font-bold shrink-0"
+              style="background: linear-gradient(135deg, #6366F1, #8B5CF6); font-size: 9px"
+            >
+              {{ initials(c.responsibleParticipant?.name ?? '') }}
+            </div>
+
+            <span class="text-xs truncate" style="color: var(--color-text-muted)">
+              {{ c.responsibleParticipant?.name ?? 'Não definido' }}
+            </span>
+          </div>
+
+          <!-- Aviso centralizado -->
+          <div class="flex justify-center min-w-0">
+            @if (overtime()) {
+              <div
+                class="flex items-center justify-center gap-2 px-4 py-2 rounded-xl shadow-md text-sm font-semibold text-center"
+                style="color: var(--color-danger); background: var(--color-surface); border: 1px solid var(--color-danger)"
+              >
+                <span class="text-lg">⚠️</span>
+                <span class="whitespace-nowrap">
+                  Pauta atrasada {{ warningTime(agendaOvertimeElapsed()) }}
+                </span>
+              </div>
+            }
+          </div>
+
+          <!-- Tempo -->
+          <div class="flex justify-end">
+            <span
+              class="text-sm font-semibold whitespace-nowrap"
+              [style.color]="overtime() ? 'var(--color-danger)' : 'var(--color-text-secondary)'"
+            >
+              ⏱ {{ fmt(agendaElapsed()) }} / {{ fmt(c.durationMin * 60) }}
+            </span>
+          </div>
+
+    </div>
+
+        <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Notas da pauta:</label>
+        <textarea [value]="c.text.notes" (input)="updateNotes($any($event.target).value)"
+                  class="w-full flex-1 px-3 py-2.5 resize-none" placeholder="Registre notações..."></textarea>
+
+        <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Decisões da pauta:</label>
+        <textarea [value]="c.text.decisions" (input)="updateDecisions($any($event.target).value)"
+                  class="w-full flex-1 px-3 py-2.5 resize-none" placeholder="Registre decisões..."></textarea>
+
+        <div class="flex justify-between mt-4">
+        @if(isOrganizer()){  
+            <button (click)="previous()" [disabled]="currentIndex() === 0"
+                class="btn-action px-3 py-1.5 rounded-lg text-xs font-medium"
+                style="background: var(--color-surface-light); color: var(--color-text-secondary); border: 1px solid var(--color-border); cursor: pointer">
+                ← Anterior
+            </button>
+          @if(currentIndex() < agenda().length - 1){
+            <button (click)="next()" [disabled]="currentIndex() === agenda().length - 1"
+                class="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                style="background: var(--color-primary); color: #000000; border: none; cursor: pointer">
+                Próxima pauta →
+            </button>
+          }@else{
+            <button
+              (click)="endMeeting()"
+              [disabled]="ending()"
+              class="shrink-0 whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-semibold"
+              style="background: rgba(239,68,68,0.1); color: var(--color-danger); border: 1px solid rgba(239,68,68,0.2); cursor: pointer"
+            >
+              {{ ending() ? 'Encerrando...' : '⏹ Encerrar reunião' }}
+            </button>
+          }
+        }
+        </div>
+      }
+    </div>
+
+    <!-- Participantes (tempo real vem depois) -->
+    <div class="rounded-xl p-4"
+         style="background: var(--color-surface); border: 1px solid var(--color-border)">
+      <h3 class="text-xs font-semibold uppercase tracking-wider mb-3" style="color: var(--color-text-secondary)">Participantes</h3>
+      <div class="space-y-3">
+          @for (participant of participants(); track participant.id) {
+              <div
+                  class="flex items-center justify-between gap-3 rounded-lg border p-3"
+                  style="border-color: var(--color-border)"
+              >
+                  <div  class="flex min-w-0 flex-col">
+                      <span  class="truncate text-sm font-medium">
+                          {{ participant.user.name ?? participant.user.email ?? 'Usuário sem nome' }}
+                      </span>
+
+                      <span class="text-[10px]" style="color: var(--color-text-muted)">
+                          {{ participant.role }}
+                      </span>
+
+                      @if (participant.participation === 'SIM') {
+                          <span class="text-[10px] text-green-600">
+                              Participação confirmada
+                          </span>
+                      } @else if (participant.participation === 'NAO') {
+                          <span class="text-[10px] text-red-600">
+                              Participação recusada
+                          </span>
+                      }@else if (participant.participation === 'TALVEZ') {
+                          <span class="text-[10px] text-yellow-600">
+                              Participação pendente de decisão
+                          </span>
+                      }
+                  </div>
+
+                  <div class="flex items-center gap-2">
+                      <button
+                          type="button"
+                          title="Confirmar participação"
+                          aria-label="Confirmar participação"
+                          [disabled]="participant.participation === 'SIM'"
+                          (click)="confirmParticipation(participant)"
+                          class="p-1 text-xs opacity-80 hover:opacity-100 disabled:opacity-30"
+                      >
+                          ✅
+                      </button>
+
+                      <button
+                          type="button"
+                          title="Recusar participação"
+                          aria-label="Recusar participação"
+                          [disabled]="participant.participation === 'NAO'"
+                          (click)="rejectParticipation(participant)"
+                          class="p-1 text-xs opacity-80 hover:opacity-100 disabled:opacity-30"
+                      >
+                          ❌
+                      </button>
+                  </div>
+              </div>
+          }
+      </div>
+    </div>
+  </div>
+
+</div>
+}
