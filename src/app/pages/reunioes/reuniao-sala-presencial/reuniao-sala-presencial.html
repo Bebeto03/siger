@@ -1,6 +1,39 @@
 @if (meeting(); as m) {
 <div class="flex flex-col h-full gap-4 p-6">
+  @if (consentOpen()) {
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style="background: rgba(0,0,0,0.6)" role="dialog" aria-modal="true"
+        aria-labelledby="consent-title">
+      <div class="w-full max-w-md rounded-xl p-6"
+          style="background: var(--color-surface); border: 1px solid var(--color-border)">
+        <h2 id="consent-title" class="text-base font-bold mb-2"
+            style="color: var(--color-text-primary)">🎙️ Gravar esta reunião?</h2>
 
+        <p class="text-sm mb-3" style="color: var(--color-text-secondary)">
+          O sistema usará o microfone deste computador para gravar o áudio da reunião e
+          gerar automaticamente as notas e decisões. Ao clicar em <strong>Permitir</strong>,
+          o navegador pedirá a sua autorização para usar o microfone.
+        </p>
+        <p class="text-xs mb-5" style="color: var(--color-text-muted)">
+          Avise os participantes de que a reunião será gravada. Você pode silenciar o
+          microfone a qualquer momento, e a gravação termina ao encerrar a reunião.
+        </p>
+
+        <div class="flex justify-end gap-2">
+          <button (click)="declineRecording()"
+                  class="px-3 py-1.5 rounded-lg text-xs font-medium"
+                  style="background: var(--color-surface-light); color: var(--color-text-secondary); border: 1px solid var(--color-border); cursor: pointer">
+            Continuar sem gravar
+          </button>
+          <button (click)="acceptRecording()"
+                  class="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  style="background: var(--color-primary); color: #000000; border: none; cursor: pointer">
+            Permitir e gravar
+          </button>
+        </div>
+      </div>
+    </div>
+  }
   <!-- Cabeçalho -->
   <div
     class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 rounded-xl px-5 py-3 w-full"
@@ -226,7 +259,60 @@
           }
       </div>
     </div>
+    
   </div>
+  @if (isOrganizer()) {
+  <div class="flex items-center justify-between gap-4 rounded-xl px-5 py-3"
+      style="background: var(--color-surface); border: 1px solid var(--color-border)">
 
+    <!-- Estado -->
+    <div class="flex items-center gap-2 min-w-0 text-xs" aria-live="polite">
+      @switch (micState()) {
+        @case ('on') {
+          <span class="inline-block w-2.5 h-2.5 rounded-full animate-pulse"
+                style="background: var(--color-danger)"></span>
+          <span style="color: var(--color-text-primary)">Gravando</span>
+        }
+        @case ('muted') {
+          <span class="inline-block w-2.5 h-2.5 rounded-full" style="background: #EAB308"></span>
+          <span style="color: #EAB308">
+            Microfone silenciado — o áudio desse período não está sendo gravado
+          </span>
+        }
+        @case ('denied') {
+          <span class="inline-block w-2.5 h-2.5 rounded-full" style="background: var(--color-danger)"></span>
+          <span style="color: var(--color-danger)">
+            Permissão negada ou microfone indisponível. Libere o microfone no ícone de
+            cadeado ao lado do endereço e tente novamente.
+          </span>
+        }
+        @default {
+          <span class="inline-block w-2.5 h-2.5 rounded-full" style="background: var(--color-text-muted)"></span>
+          <span style="color: var(--color-text-secondary)">Gravação desativada</span>
+        }
+      }
+    </div>
+
+    <!-- Ações -->
+    <div class="flex items-center gap-2 shrink-0">
+      @if (micState() === 'on' || micState() === 'muted') {
+        <button type="button" (click)="toggleMute()"
+                [attr.aria-pressed]="micState() === 'muted'"
+                class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap"
+                [style.background]="micState() === 'muted' ? 'var(--color-primary)' : 'rgba(239,68,68,0.1)'"
+                [style.color]="micState() === 'muted' ? '#000000' : 'var(--color-danger)'"
+                style="border: 1px solid var(--color-border); cursor: pointer">
+          {{ micState() === 'muted' ? '🎙️ Ativar microfone' : '🔇 Desativar microfone' }}
+        </button>
+      } @else if (meetingActive()) {
+        <button type="button" (click)="retryMic()"
+                class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap"
+                style="background: var(--color-primary); color: #000000; border: none; cursor: pointer">
+          🎙️ Ativar gravação
+        </button>
+      }
+    </div>
+  </div>
+}
 </div>
 }

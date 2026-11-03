@@ -25,9 +25,9 @@ export interface AgendaItem {
     selector: 'app-reuniao-sala',
     standalone: true,
     imports: [],
-    templateUrl: './reuniao-sala-remota.html',
+    templateUrl: './reuniao-sala-presencial.html',
 })
-export class ReuniaoSalaRemota implements OnInit, OnDestroy {
+export class ReuniaoSalaPresencial implements OnInit, OnDestroy { 
     private route = inject(ActivatedRoute);
     private router = inject(Router);
     private meetingService = inject(MeetingService);
@@ -55,11 +55,13 @@ export class ReuniaoSalaRemota implements OnInit, OnDestroy {
     micState = signal<'idle' | 'on' | 'muted' | 'denied'>('idle');
     recording = signal(false);
     ending = signal(false);
+    consentOpen = signal(false);
+
     meetingActive = signal(false);
     isPresent = signal(false);
 
     isOrganizer = computed(() => this.auth.temQualquerPermissao(['ROLE_ORGANIZADOR']));
-    meetingElapsed = computed(() => Math.max(0,Math.floor(this.now() - this.startedAt) / 1000));
+    meetingElapsed = computed(() => Math.max(0,Math.floor((this.now() - this.startedAt) / 1000)));
     meetingOvertimeElapsed = computed(() => Math.trunc(((this.meetingElapsed() - (this.meeting()!.duration * 60))/60))) ;
     agendaElapsed = computed(() => {
         const item = this.current();
@@ -89,6 +91,11 @@ export class ReuniaoSalaRemota implements OnInit, OnDestroy {
         this.isPresent.set(m.isPresent!)
 
         this.meetingActive.set(m.status === 'EM_ANDAMENTO');
+
+        // Só quem pode gerenciar a reunião grava; o modal pede o consentimento.
+        if (this.meetingActive() && this.isOrganizer()) {
+            this.consentOpen.set(true);
+        }
 
         const minutes = await this.meetingMinutesService.buscarPorReuniao(this.meetingId);
         this.meetingMinutes.set(minutes)
@@ -259,29 +266,35 @@ export class ReuniaoSalaRemota implements OnInit, OnDestroy {
     }
 
     // ---------- Áudio ----------
-    async enableMic() {
+    async acceptRecording(): Promise<void> {
         try {
-            await this.audio.requestMic();
+            await this.audio.requestMic();          // aqui o navegador mostra o prompt de permissão
             this.micState.set('on');
-        } catch {
-            this.micState.set('denied');
-        }
-    }
-
-    toggleMute() {
-        const muted = this.micState() === 'on';
-        this.audio.setMuted(muted);
-        this.micState.set(muted ? 'muted' : 'on');
-    }
-
-    toggleRecording() {
-        if (this.recording()) {
-            this.audio.stopRecording();
-            this.recording.set(false);
-        } else {
-            this.audio.startRecording();
+            await this.audio.startRecording(this.meetingId);
             this.recording.set(true);
+        } catch (error) {
+            console.error('Erro ao iniciar a gravação:', error);
+            this.audio.release();
+            this.micState.set('denied');
+            this.recording.set(false);
+        } finally {
+            this.consentOpen.set(false);
         }
+    }
+
+    declineRecording(): void {
+        this.consentOpen.set(false); // micState continua 'idle', nada é gravado
+    }
+
+    async retryMic(): Promise<void> {
+        this.consentOpen.set(true);
+    }
+
+    toggleMute(): void {
+        if (this.micState() !== 'on' && this.micState() !== 'muted') return;
+        const willMute = this.micState() === 'on';
+        this.audio.setMuted(willMute);
+        this.micState.set(willMute ? 'muted' : 'on');
     }
 
     // ---------- Encerrar ----------
@@ -315,6 +328,8 @@ export class ReuniaoSalaRemota implements OnInit, OnDestroy {
                 await this.audio.stopRecording();
                 this.recording.set(false);
             }
+            this.audio.release();
+            this.micState.set('idle');
 
             await this.consolidarAta();
             this.meeting.update(meeting =>
@@ -337,6 +352,7 @@ export class ReuniaoSalaRemota implements OnInit, OnDestroy {
             return true;
         } catch (error) {
             console.error('Erro ao encerrar a reunião:', error);
+            alert('Não foi possível enviar todo o áudio. Verifique a conexão e tente encerrar novamente.');
             this.ending.set(false);
             return false;
         }
