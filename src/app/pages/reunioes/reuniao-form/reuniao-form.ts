@@ -73,31 +73,45 @@ export class ReuniaoForm implements OnInit {
   saving  = signal(false);
   isEdit  = false;
   editId: number | null = null;
-
+  
   form: Omit<Meeting, 'id' | 'createdAt' | 'updatedAt'> = {
     title: '', description: '', location: '',
     estimatedMeetingDate: '', duration: 60,
     isPresent: true
   };
-
+  
   formDate = '';
   formTime = '';
-
+  
   availableTimes: TimeRange[] = [];
-
+  
   allUsers: User[]           = [];
   participantSearch          = '';
   userSuggestions            = signal<User[]>([]);
   formParticipants: FormParticipant[] = [];
   formTopics: FormTopic[]    = [];
+  
+  DIAS_SEMANA: { key: DayOfWeek; label: string }[] = [
+  { key: 'MONDAY',    label: 'seg' },
+  { key: 'TUESDAY',   label: 'ter' },
+  { key: 'WEDNESDAY', label: 'qua' },
+  { key: 'THURSDAY',  label: 'qui' },
+  { key: 'FRIDAY',    label: 'sex' },
+  { key: 'SATURDAY',  label: 'sáb' },
+  { key: 'SUNDAY',    label: 'dom' },
+];
 
+// null = ainda não calculado
+diasEmComum = signal<string[] | null>(null);
+carregandoDias = signal(false);
+  
   readonly steps = [
     { i: 1, label: 'Participantes'  },
     { i: 2, label: 'Informações'},
     { i: 3, label: 'Pauta'        },
     { i: 4, label: 'Revisão'      },
   ];
-
+  
   get reviewRows() {
     const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
     let dateLabel = '—';
@@ -139,6 +153,86 @@ export class ReuniaoForm implements OnInit {
   @HostListener('document:keydown.escape')
   onEsc() { 
     this.dropdownAberto = false;
+  }
+
+  private requisicaoDias = 0;
+
+  // Chame sempre que a lista de participantes mudar (adicionar/remover)
+  async aoAlterarParticipantes(): Promise<void> {
+    const idRequisicao = ++this.requisicaoDias;
+
+    // Participantes mudaram: o que o usuário escolheu antes pode não valer mais
+    this.formDate = '';
+    this.formTime = '';
+    this.availableTimes = [];   // em vez de this.horariosDisponiveis = []
+
+    if (!this.formParticipants?.length) {
+      this.diasEmComum.set(null);
+      this.carregandoDias.set(false);
+      return;
+    }
+
+    this.carregandoDias.set(true);
+    const userIds = this.formParticipants.map(p => p.userId);
+
+    try {
+      const resultados = await Promise.all(
+        this.DIAS_SEMANA.map(async ({ key, label }) => {
+          try {
+            const horarios = await this.meetingService.findCommonAvailability(userIds, key);
+            return { label, temHorario: horarios.length > 0 };
+          } catch {
+            return { label, temHorario: false };
+          }
+        })
+      );
+
+      // Se os participantes mudaram durante a consulta, ignora esta resposta
+      if (idRequisicao !== this.requisicaoDias) return;
+
+      this.diasEmComum.set(resultados.filter(r => r.temHorario).map(r => r.label));
+    } catch (error) {
+      if (idRequisicao !== this.requisicaoDias) return;
+      console.error('Erro ao buscar dias em comum:', error);
+      this.diasEmComum.set(null);
+    } finally {
+      if (idRequisicao === this.requisicaoDias) {
+        this.carregandoDias.set(false);
+      }
+    }
+  }
+
+  async carregarDiasEmComum(): Promise<void> {
+    if (!this.formParticipants?.length) {
+      this.diasEmComum.set(null);
+      return;
+    }
+
+    this.carregandoDias.set(true);
+
+    try {
+      const userIds = this.formParticipants.map(p => p.userId);
+
+      const resultados = await Promise.all(
+        this.DIAS_SEMANA.map(async ({ key, label }) => {
+          try {
+            const horarios = await this.meetingService.findCommonAvailability(userIds, key);
+            return { label, temHorario: horarios.length > 0 };
+          } catch {
+            return { label, temHorario: false };
+          }
+        })
+      );
+
+      this.diasEmComum.set(
+        resultados.filter(r => r.temHorario).map(r => r.label)
+      );
+    } catch (error) {
+      console.error('Erro ao buscar dias em comum:', error);
+      this.diasEmComum.set(null); // some o aviso em caso de erro
+    } finally {
+      this.carregandoDias.set(false);
+    }
   }
 
   async buscarMelhorHorario(): Promise<void> {
@@ -286,7 +380,12 @@ export class ReuniaoForm implements OnInit {
 
   get canAdvance(): boolean {
     if (this.step() === 1) {
-      return (this.formParticipants?.length ?? 0) > 0;
+      const dias = this.diasEmComum();
+      return (
+        (this.formParticipants?.length ?? 0) > 0 &&
+        !this.carregandoDias() &&
+        dias !== null &&
+        dias.length > 0);
     }
     if (this.step() === 2) {
       return !!(
@@ -367,10 +466,12 @@ export class ReuniaoForm implements OnInit {
     this.formParticipants.push({ userId: u.id, name: u.name, email: u.email, role: 'PARTICIPANTE' });
     this.participantSearch = '';
     this.userSuggestions.set([]);
+    this.aoAlterarParticipantes();
   }
 
   removeParticipant(p: FormParticipant): void {
     this.formParticipants = this.formParticipants.filter(x => x.userId !== p.userId);
+    this.aoAlterarParticipantes();
   }
 
   get tempoTotalPautas(): number {

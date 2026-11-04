@@ -324,6 +324,8 @@ export class ReuniaoSalaPresencial implements OnInit, OnDestroy {
         this.ending.set(true);
 
         try {
+            await this.consolidarAta();
+            
             if (this.recording()) {
                 await this.audio.stopRecording();
                 this.recording.set(false);
@@ -331,7 +333,6 @@ export class ReuniaoSalaPresencial implements OnInit, OnDestroy {
             this.audio.release();
             this.micState.set('idle');
 
-            await this.consolidarAta();
             this.meeting.update(meeting =>
                 meeting
                     ? {

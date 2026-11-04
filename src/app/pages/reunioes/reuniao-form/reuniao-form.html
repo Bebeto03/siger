@@ -41,7 +41,28 @@
 
         <!-- Step 1: Participantes -->
         @if (step() === 1) {
-        <h3 class="text-base font-bold mb-5" style="color: var(--color-text-primary)">Participantes</h3>
+            <h3 class="text-base font-bold mb-2" style="color: var(--color-text-primary)">Participantes</h3>
+
+            @if (carregandoDias()) {
+                <p class="text-sm mt-3 mb-2" style="color: var(--color-text-secondary)">
+                Verificando dias em comum...
+                </p>
+            } @else if (diasEmComum() !== null) {
+                @if (diasEmComum()!.length === 0) {
+                <div class="flex items-center gap-2 px-3 py-2 mt-3 mb-2 rounded-md border text-sm"
+                    style="border-color: var(--color-danger, #dc2626); color: var(--color-danger, #dc2626);">
+                    <span>⚠️</span>
+                    <span>Os participantes não possuem dias em comum</span>
+                </div>
+                } @else {
+                <div class="flex items-center gap-2 px-3 py-2 mt-3 mb-2 rounded-md border text-sm"
+                    style="border-color: var(--color-border); color: var(--color-text-primary); background-color: var(--color-surface);">
+                    <span>📅</span>
+                    <span>Os participantes possuem em comum os dias: {{ diasEmComum()!.join(', ') }}</span>
+                </div>
+                }
+            }
+            
 
         <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Buscar usuários</label>
         <input [(ngModel)]="participantSearch" (input)="filterUsers()"
@@ -105,13 +126,30 @@
 
         <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Descrição</label>
         <textarea [(ngModel)]="form.description" rows="3" placeholder="Descreva o objetivo da reunião..."
-            class="w-full px-3 py-2.5 mb-4 resize-y"></textarea>
-
+            class="w-full px-3 py-2.5 mb-3 resize-y"></textarea>
+        @if (carregandoDias()) {
+            <p class="text-sm mb-2 justify-center" style="color: var(--color-text-secondary)">
+            Verificando dias em comum...
+            </p>
+        } @else if (diasEmComum() !== null) {
+            @if (diasEmComum()!.length === 0) {
+            <div class="flex items-center justify-center gap-2 px-3 py-2 mb-2 rounded-md border text-sm"
+                style="border-color: var(--color-danger, #dc2626); color: var(--color-danger, #dc2626);">
+                <span>⚠️</span>
+                <span>Os participantes não possuem dias em comum</span>
+            </div>
+            } @else {
+            <div class="flex items-center justify-center gap-2 px-3 py-2 mb-2 rounded-md border text-sm"
+                style="border-color: var(--color-border); color: var(--color-text-primary); text-align: center; opacity: 0.75; background-color: var(--color-surface);">
+                <span>💡 Escolha um destes dias: {{ diasEmComum()!.join(', ') }}</span>
+            </div>
+            }
+        }
         <div class="flex gap-4">
             <div class="flex-1">
-            <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Data *</label>
-            <input type="date" [(ngModel)]="formDate" (ngModelChange)="aoAlterarData($event)" class="w-full px-3 py-2.5 mb-4" />
-            </div>
+                <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">Data *</label>
+                <input type="date" [(ngModel)]="formDate" (ngModelChange)="aoAlterarData($event)" class="w-full px-3 py-2.5 mb-4" />
+                </div>
             <div class="flex-1 relative" #horarioWrapper>
             <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5" style="color: var(--color-text-secondary)">
                 Horário *
