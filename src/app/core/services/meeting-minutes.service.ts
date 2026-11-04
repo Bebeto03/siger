@@ -52,8 +52,8 @@ export class MeetingMinutesService {
   }
 
   summaryAi(body: MinutesSummary): Promise<MinutesSummary> {
-  return firstValueFrom(this.http.post<MinutesSummary>(`${this.api}/summary/ai`, body));
-}
+    return firstValueFrom(this.http.post<MinutesSummary>(`${this.api}/summary/ai`, body));
+  }
 
   
 }

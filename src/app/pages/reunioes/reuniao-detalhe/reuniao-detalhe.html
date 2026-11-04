@@ -7,7 +7,7 @@
         <div>
         <h1 class="text-xl font-bold" style="color: var(--color-text-primary)">{{ meeting()!.title }}</h1>
         <p class="text-sm mt-0.5" style="color: var(--color-text-muted)">
-            {{ formatDate(meeting()!.meetingDate) }} · {{ formatTime(meeting()!.meetingDate) }}
+            {{ formatDate(meeting()!.estimatedMeetingDate) }} · {{ formatTime(meeting()!.estimatedMeetingDate) }}
         </p>
         </div>
         <div class="flex items-center gap-2">
@@ -16,10 +16,12 @@
             ← Voltar
         </button>
         @if (podecriarReuniao()) {
-            <button (click)="goEdit()" class="px-4 py-2 rounded-lg text-sm font-medium"
-                style="background: var(--color-surface-light); color: var(--color-text-primary); border: 1px solid var(--color-border); cursor: pointer">
-                ✏️ Editar
-            </button>
+            @if(meeting()!.status === 'NAO_INICIADO'){
+                <button (click)="goEdit()" class="px-4 py-2 rounded-lg text-sm font-medium"
+                    style="background: var(--color-surface-light); color: var(--color-text-primary); border: 1px solid var(--color-border); cursor: pointer">
+                    ✏️ Editar
+                </button>
+            }
             <button (click)="showDeleteModal.set(true)" class="px-4 py-2 rounded-lg text-sm font-semibold"
                 style="background: rgba(239,68,68,0.1); color: var(--color-danger); border: 1px solid rgba(239,68,68,0.2); cursor: pointer">
                 🗑 Excluir
@@ -178,7 +180,7 @@
                 <div class="topic-row flex items-center gap-3 p-4 rounded-xl"
                         style="background: var(--color-surface-light)"
                         [style.border]="t.concluded ? '1px solid rgba(16,185,129,0.3)' : '1px solid var(--color-border)'">
-                    <button (click)="toggleTopic(t)"
+                    <button 
                     class="w-7 h-7 rounded-full flex items-center justify-center shrink-0 cursor-pointer"
                     [style.background]="t.concluded ? 'var(--color-success)' : 'var(--color-surface-hover)'"
                     style="border: none">
@@ -200,34 +202,13 @@
                             [style.color]="priorityColor(t.priority)">
                         {{ t.priority }}
                         </span>
-                        @if (t.timer) {
+                        @if (t.time) {
                         <span class="text-xs flex items-center gap-1" style="color: var(--color-text-muted)">
-                            ⏱ {{ t.timer }} min
+                            ⏱ {{ t.time }} min
                         </span>
                         }
                     </div>
                     </div>
-
-                    <!-- Timer button -->
-                    @if (activeTimer()?.topicId === t.id) {
-                    <div class="flex items-center gap-2">
-                        <span class="text-sm font-mono font-bold timer-pulse" style="color: var(--color-primary)">
-                        {{ formatTimer(activeTimer()!.remaining) }}
-                        </span>
-                        <button (click)="stopTimer()"
-                        class="px-3 py-1.5 rounded-lg text-xs font-semibold"
-                        style="background: rgba(239,68,68,0.1); color: var(--color-danger); border: 1px solid rgba(239,68,68,0.2); cursor: pointer">
-                        ⏹ Parar
-                        </button>
-                    </div>
-                    } @else {
-                    <button (click)="startTimer(t)"
-                        class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold"
-                        [style.opacity]="t.concluded ? '0.4' : '1'"
-                        style="background: var(--color-surface-hover); color: var(--color-text-secondary); border: 1px solid var(--color-border); cursor: pointer">
-                        ⏱ Timer
-                    </button>
-                    }
                 </div>
                 } @empty {
                 <div class="text-center py-10">

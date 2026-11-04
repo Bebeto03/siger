@@ -1,10 +1,13 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { UserService } from '../../core/services/user.service';
 import { User } from '../../core/models/user.model';
 import { AuthService as AuthorizationService } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
+import { NotificationPreferenceService } from '../../core/services/notification-preference.service';
+import { NotificationPreference, NotificationPreferenceItem, NotificationType } from '../../core/models/notification-preference.model';
 import { ToastComponent } from '../../shared/components/toast/toast';
 
 type Tab = 'perfil' | 'seguranca' | 'notificacoes';
@@ -20,6 +23,7 @@ export class Configuracoes implements OnInit {
   private userService = inject(UserService);
   readonly auth = inject(AuthorizationService);
   private notify = inject(NotificationService);
+  private preferenceService = inject(NotificationPreferenceService);
 
   activeTab = signal<Tab>('perfil');
   loadingProfile = signal(false);
@@ -27,33 +31,74 @@ export class Configuracoes implements OnInit {
   sendingReset = signal(false);
   resetSent = signal(false);
   currentUser = signal<User | null>(null);
+  loadingNotif = signal(false);
+  notifLoadError = signal(false);
   savingNotif = signal(false);
+  notifPrefs = signal<NotificationPreference[]>([]);
+  private savedNotifPrefs = signal<NotificationPreference[]>([]);
 
-  readonly notifItems = [
-    { key: 'lembretes',    label: 'Lembretes de reunião',          description: '24h e 1h antes do início da reunião' },
-    { key: 'convites',     label: 'Convites de reunião',            description: 'Quando você for convidado para uma reunião' },
-    { key: 'cancelamento', label: 'Cancelamento de reunião',        description: 'Quando uma reunião for cancelada' },
-    { key: 'tarefas',      label: 'Atribuição de tarefas',          description: 'Quando uma tarefa for atribuída a você' },
-    { key: 'ausencia',     label: 'Alertas de ausência de confirmação', description: 'Participantes que ainda não confirmaram presença' },
-  ];
-
-  notifValues: Record<string, boolean> = {
-    lembretes:    true,
-    convites:     true,
-    cancelamento: true,
-    tarefas:      true,
-    ausencia:     false,
+  // Rótulo vem do backend (description); aqui só o complemento explicativo de cada tipo.
+  readonly notifHints: Record<NotificationType, string> = {
+    MEETING_REMINDER:          '24h e 1h antes do início da reunião',
+    MEETING_INVITE:            'Obrigatório: é pelo e-mail de convite que você confirma presença',
+    MEETING_CANCELLED:         'Quando uma reunião da qual você participa for cancelada',
+    TASK_ASSIGNED:             'Quando uma tarefa for atribuída a você',
+    ORGANIZER_NO_CONFIRMATION: '1h antes da reunião, quando nenhum participante confirmou presença',
   };
 
-  toggleNotif(key: string): void {
-    this.notifValues[key] = !this.notifValues[key];
+  /** Apenas os tipos editáveis cujo valor difere do último estado salvo — o PUT é parcial. */
+  changedNotifPrefs = computed<NotificationPreferenceItem[]>(() => {
+    const saved = new Map(this.savedNotifPrefs().map(p => [p.type, p.emailEnabled]));
+    return this.notifPrefs()
+      .filter(p => p.editable && saved.get(p.type) !== p.emailEnabled)
+      .map(p => ({ type: p.type, emailEnabled: p.emailEnabled }));
+  });
+
+  async openNotificationsTab(): Promise<void> {
+    this.activeTab.set('notificacoes');
+    if (this.savedNotifPrefs().length === 0 && !this.loadingNotif()) {
+      await this.loadNotifications();
+    }
+  }
+
+  async loadNotifications(): Promise<void> {
+    this.loadingNotif.set(true);
+    this.notifLoadError.set(false);
+    try {
+      this.applyNotifPrefs(await this.preferenceService.buscarMinhas());
+    } catch {
+      this.notifLoadError.set(true);
+    } finally {
+      this.loadingNotif.set(false);
+    }
+  }
+
+  toggleNotif(pref: NotificationPreference): void {
+    if (!pref.editable || this.savingNotif()) return;
+    this.notifPrefs.update(list =>
+      list.map(p => p.type === pref.type ? { ...p, emailEnabled: !p.emailEnabled } : p));
   }
 
   async saveNotifications(): Promise<void> {
+    const changed = this.changedNotifPrefs();
+    if (changed.length === 0) return;
     this.savingNotif.set(true);
-    await new Promise(r => setTimeout(r, 600));
-    this.savingNotif.set(false);
-    this.notify.success('Preferências de notificação salvas.');
+    try {
+      this.applyNotifPrefs(await this.preferenceService.salvarMinhas(changed));
+      this.notify.success('Preferências de notificação salvas.');
+    } catch (err) {
+      // O interceptor já avisa em 400/404/5xx/sem conexão; o 403 (erro mascarado pelo backend) chega aqui sem aviso.
+      if (err instanceof HttpErrorResponse && err.status === 403) {
+        this.notify.error('Não foi possível salvar as preferências. Tente novamente.');
+      }
+    } finally {
+      this.savingNotif.set(false);
+    }
+  }
+
+  private applyNotifPrefs(prefs: NotificationPreference[]): void {
+    this.savedNotifPrefs.set(prefs);
+    this.notifPrefs.set(prefs);
   }
 
   profileForm = this.fb.group({

@@ -24,7 +24,7 @@
         : 'background: transparent; color: var(--color-text-secondary)'">
         🔒 Segurança
     </button>
-    <button (click)="activeTab.set('notificacoes')"
+    <button (click)="openNotificationsTab()"
         class="px-5 py-2 rounded-lg text-sm font-medium transition-all"
         [style]="activeTab() === 'notificacoes'
         ? 'background: var(--color-primary); color: #000'
@@ -132,25 +132,41 @@
             style="background: var(--color-surface); border: 1px solid var(--color-border)">
         <h3 class="font-semibold mb-1" style="color: var(--color-text-primary)">Preferências de Notificação</h3>
         <p class="text-sm mb-5" style="color: var(--color-text-muted)">
-        Escolha quais notificações deseja receber.
+        Escolha quais notificações deseja receber por e-mail. Os avisos continuam registrados no sistema.
         </p>
 
+        @if (loadingNotif()) {
+        <div class="text-sm py-6 text-center" style="color: var(--color-text-muted)">Carregando preferências...</div>
+        } @else if (notifLoadError()) {
+        <div class="rounded-lg px-4 py-3 text-sm flex items-center justify-between gap-3"
+                style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: var(--color-danger)">
+            Não foi possível carregar suas preferências.
+            <button (click)="loadNotifications()" class="text-sm font-semibold underline shrink-0">Tentar novamente</button>
+        </div>
+        } @else {
         <div class="flex flex-col gap-1">
-        @for (item of notifItems; track item.key) {
+        @for (pref of notifPrefs(); track pref.type) {
             <div class="flex items-center justify-between py-3.5 border-b last:border-0"
                 style="border-color: var(--color-border)">
             <div>
-                <div class="text-sm font-medium" style="color: var(--color-text-primary)">{{ item.label }}</div>
-                <div class="text-xs mt-0.5" style="color: var(--color-text-muted)">{{ item.description }}</div>
+                <div class="text-sm font-medium" style="color: var(--color-text-primary)">{{ pref.description }}</div>
+                <div class="text-xs mt-0.5" style="color: var(--color-text-muted)">{{ notifHints[pref.type] }}</div>
             </div>
             <button
-                (click)="toggleNotif(item.key)"
+                type="button"
+                role="switch"
+                [attr.aria-checked]="pref.emailEnabled"
+                [attr.aria-label]="'E-mail: ' + pref.description"
+                [disabled]="!pref.editable || savingNotif()"
+                [title]="pref.editable ? '' : 'Este e-mail não pode ser desativado'"
+                (click)="toggleNotif(pref)"
                 class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ml-4"
-                [style]="notifValues[item.key]
-                ? 'background: var(--color-primary)'
-                : 'background: var(--color-border)'">
+                [style]="(pref.emailEnabled
+                ? 'background: var(--color-primary);'
+                : 'background: var(--color-border);')
+                + (pref.editable ? '' : ' opacity: 0.5; cursor: not-allowed;')">
                 <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm"
-                    [style]="notifValues[item.key] ? 'transform: translateX(22px)' : 'transform: translateX(3px)'">
+                    [style]="pref.emailEnabled ? 'transform: translateX(22px)' : 'transform: translateX(3px)'">
                 </span>
             </button>
             </div>
@@ -158,14 +174,15 @@
         </div>
 
         <div class="mt-5 flex justify-end">
-        <button (click)="saveNotifications()" [disabled]="savingNotif()"
+        <button (click)="saveNotifications()" [disabled]="savingNotif() || changedNotifPrefs().length === 0"
             class="px-5 py-2.5 rounded-lg text-sm font-semibold transition-all"
-            [style]="savingNotif()
+            [style]="savingNotif() || changedNotifPrefs().length === 0
             ? 'background: var(--color-primary-dark); color: #000; opacity: 0.5; cursor: not-allowed'
             : 'background: var(--color-primary); color: #000'">
             {{ savingNotif() ? 'Salvando...' : 'Salvar Preferências' }}
         </button>
         </div>
+        }
     </div>
     }
 

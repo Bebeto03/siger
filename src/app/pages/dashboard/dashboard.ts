@@ -23,6 +23,7 @@ import {
   selectTarefasPendentes,
   selectTarefasRecentes,
 } from '../../store/indicadores';
+import { ParticipantService } from '../../core/services/participant.service';
 
 /** Variação percentual entre o mês atual e o anterior; null quando não dá para comparar. */
 function variacaoPct(atual: number | null, anterior: number | null): number | null {

@@ -1,12 +1,14 @@
+import { ParticipantRequestDTO } from "./participant.model";
+
 export type TopicPriority = 'ALTA' | 'MEDIA' | 'BAIXA';
 
 export interface Topic {
   id?: number;
   title: string;
-  timer?: number;
+  time ?: number;
   orderIndex: number;
   concluded: boolean;
   priority: TopicPriority;
-  responsible?: { id: number };
+  responsibleParticipant ?: ParticipantRequestDTO;
   meetingMinutes: { id: number };
 }

@@ -71,9 +71,9 @@ function mesmoMes(dateStr: string | undefined, ref: MesReferencia): boolean {
 
 export function agruparReunioesPorMes(meetings: Meeting[], meses: MesReferencia[]): ReunioesPorMes {
   const realizadas = meses.map(ref =>
-    meetings.filter(m => m.status !== 'CANCELADO' && mesmoMes(m.meetingDate, ref)).length);
+    meetings.filter(m => m.status !== 'CANCELADO' && mesmoMes(m.estimatedMeetingDate, ref)).length);
   const canceladas = meses.map(ref =>
-    meetings.filter(m => m.status === 'CANCELADO' && mesmoMes(m.meetingDate, ref)).length);
+    meetings.filter(m => m.status === 'CANCELADO' && mesmoMes(m.estimatedMeetingDate, ref)).length);
   return { meses, labels: meses.map(m => m.label), realizadas, canceladas };
 }
 
@@ -86,7 +86,7 @@ export function agruparComparecimentoPorMes(meetings: Meeting[], meses: MesRefer
   const taxa = meses.map(ref => {
     let presentes = 0, total = 0;
     for (const m of meetings) {
-      if (m.status !== 'CONCLUIDO' || !mesmoMes(m.meetingDate, ref)) continue;
+      if (m.status !== 'CONCLUIDO' || !mesmoMes(m.estimatedMeetingDate, ref)) continue;
       for (const p of m.participants ?? []) {
         total++;
         if (p.participation === 'PARTICIPOU') presentes++;
@@ -99,7 +99,7 @@ export function agruparComparecimentoPorMes(meetings: Meeting[], meses: MesRefer
 
 export function agruparDuracaoMediaPorMes(meetings: Meeting[], meses: MesReferencia[]): DuracaoMediaPorMes {
   const minutos = meses.map(ref => {
-    const doMes = meetings.filter(m => m.status !== 'CANCELADO' && m.duration && mesmoMes(m.meetingDate, ref));
+    const doMes = meetings.filter(m => m.status !== 'CANCELADO' && m.duration && mesmoMes(m.estimatedMeetingDate, ref));
     if (!doMes.length) return null;
     return Math.round(doMes.reduce((s, m) => s + m.duration, 0) / doMes.length);
   });
@@ -141,7 +141,7 @@ export function criarSelectorsMensais(referencia: Date, qtdMeses = 12) {
 
   const selectReunioesEsteMes = createSelector(selectMeetings, m => {
     const atual = meses[meses.length - 1];
-    return m.filter(x => mesmoMes(x.meetingDate, atual)).length;
+    return m.filter(x => mesmoMes(x.estimatedMeetingDate, atual)).length;
   });
 
   return { meses, selectReunioesPorMes, selectComparecimentoPorMes, selectDuracaoMediaPorMes, selectReunioesEsteMes };
@@ -181,7 +181,7 @@ export const selectTarefasPendentes = createSelector(selectTasks, t =>
 export const selectProximasReunioes = createSelector(selectMeetings, m =>
   [...m]
     .filter(x => x.status === 'NAO_INICIADO' || x.status === 'EM_ANDAMENTO')
-    .sort((a, b) => new Date(a.meetingDate).getTime() - new Date(b.meetingDate).getTime())
+    .sort((a, b) => new Date(a.estimatedMeetingDate).getTime() - new Date(b.estimatedMeetingDate).getTime())
     .slice(0, 4));
 
 export const selectTarefasRecentes = createSelector(selectTasks, t =>
@@ -201,6 +201,6 @@ export const selectReunioesComConfirmacaoPendente = createSelector(
   (m, pendentes) =>
     m
       .filter(x => x.status === 'NAO_INICIADO' && x.id != null && (pendentes[x.id] ?? 0) > 0)
-      .sort((a, b) => new Date(a.meetingDate).getTime() - new Date(b.meetingDate).getTime())
+      .sort((a, b) => new Date(a.estimatedMeetingDate).getTime() - new Date(b.estimatedMeetingDate).getTime())
       .slice(0, 3),
 );

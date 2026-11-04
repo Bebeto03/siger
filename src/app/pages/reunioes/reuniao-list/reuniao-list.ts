@@ -9,6 +9,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { ToastComponent } from '../../../shared/components/toast/toast';
 import { ParticipantParticipation } from '../../../core/models/participant.model';
 import { ParticipantService } from '../../../core/services/participant.service';
+import { UserService } from '../../../core/services/user.service';
 
 @Component({
   selector: 'app-reuniao-list',
@@ -27,6 +28,7 @@ import { ParticipantService } from '../../../core/services/participant.service';
 })
 export class ReuniaoList implements OnInit {
   private meetingService = inject(MeetingService);
+  private userService = inject(UserService);
   private participantService = inject(ParticipantService);
   private notify         = inject(NotificationService);
   private logService     = inject(LogService);
@@ -39,6 +41,8 @@ export class ReuniaoList implements OnInit {
   searchText  = signal('');
   deleteTarget = signal<Meeting | null>(null);
   deleting    = signal(false);
+  startingId = signal<Number | null>(null);
+  enteringId = signal<Number | null>(null);
 
   calendarYear  = signal(new Date().getFullYear());
   calendarMonth = signal(new Date().getMonth());
@@ -68,6 +72,8 @@ export class ReuniaoList implements OnInit {
   });
 
   podecriarReuniao = computed(() => this.auth.temQualquerPermissao(['ROLE_ADMIN', 'ROLE_ORGANIZADOR']));
+  
+  isOrganizer = computed(() => this.auth.temQualquerPermissao(['ROLE_ORGANIZADOR']));
 
   calendarLabel = computed(() => `${this.monthNames[this.calendarMonth()]} ${this.calendarYear()}`);
 
@@ -83,7 +89,7 @@ export class ReuniaoList implements OnInit {
     for (let d = 1; d <= daysInMonth; d++) {
       const isToday  = today.getDate() === d && today.getMonth() === month && today.getFullYear() === year;
       const meetings = this.meetings().filter(m => {
-        const date = new Date(m.meetingDate);
+        const date = new Date(m.estimatedMeetingDate);
         return date.getDate() === d && date.getMonth() === month && date.getFullYear() === year;
       });
       cells.push({ day: d, isToday, meetings });
@@ -95,17 +101,42 @@ export class ReuniaoList implements OnInit {
 
   async load(): Promise<void> {
     this.loading.set(true);
+
     try {
-      if(this.auth.temPermissao('ROLE_ADMIN')){
-        this.meetings.set(await this.meetingService.listar());
-      }else{
-        this.meetings.set(await this.meetingService.listarMinhasReunioes())
-      }
+      const meetings = this.auth.temPermissao('ROLE_ADMIN')
+        ? await this.meetingService.listar()
+        : await this.meetingService.listarMinhasReunioes();
+
+      this.meetings.set(this.ordenarReunioes(meetings));
     } catch {
       this.notify.error('Erro ao carregar reuniões.');
     } finally {
       this.loading.set(false);
     }
+  }
+
+  private ordenarReunioes(meetings: Meeting[]): Meeting[] {
+    const prioridade: Record<MeetingStatus, number> = {
+      EM_ANDAMENTO: 1,
+      NAO_INICIADO: 2,
+      CONCLUIDO: 3,
+      CANCELADO: 4
+    };
+
+    return [...meetings].sort((a, b) => {
+      const prioridadeA = prioridade[a.status ?? 'NAO_INICIADO'];
+      const prioridadeB = prioridade[b.status ?? 'NAO_INICIADO'];
+
+      if (prioridadeA !== prioridadeB) {
+        return prioridadeA - prioridadeB;
+      }
+
+      // Dentro do mesmo status, ordena pela data estimada mais próxima.
+      return (
+        new Date(a.estimatedMeetingDate).getTime() -
+        new Date(b.estimatedMeetingDate).getTime()
+      );
+    });
   }
 
   goCreate(): void  { this.router.navigate(['/reunioes/nova']); }
@@ -217,8 +248,8 @@ export class ReuniaoList implements OnInit {
     return map[status] ?? 'rgba(148,163,184,0.1)';
   }
 
-  confirmAttendence(status: ParticipantParticipation) : string{
-     if(status === 'NAO' || status === 'TALVEZ'){
+  confirmAttendence(participation: ParticipantParticipation) : string{
+     if(participation === 'NAO' || participation === 'TALVEZ'){
       return 'Confirmar Presença';
      }else{
       return 'Desmarcar Presença';
@@ -229,11 +260,54 @@ export class ReuniaoList implements OnInit {
     try {
       const participant = await this.participantService.registrarPresenca(m.id!);
 
-      m.participation = participant;
+      m.participant = participant;
     } catch (error) {
       console.error('Erro ao registrar presença:', error);
     }
   }
 
+  canRegister(status: MeetingStatus, participation: ParticipantParticipation){
+    return participation &&
+            participation !== 'NAO_PARTICIPOU' &&
+            participation !== 'PARTICIPOU' &&
+            status != 'CONCLUIDO' &&
+            status != 'CANCELADO';
+  }
+
+  canStart(meeting: Meeting){
+    return meeting.status === 'NAO_INICIADO' && 
+           meeting.organizerEmail === this.auth.currentUser()?.sub;
+  }
+
+  async startMeeting(meeting: Meeting) {
+    if (this.startingId() !== null) return;
+
+    this.startingId.set(meeting.id!);
+    try {
+      await this.meetingService.iniciar(meeting.id!);
+      this.router.navigate(['/reunioes', meeting.id, 'sala',meeting.isPresent? 'presencial' : 'remota']);
+    } catch (err) {
+      // exibir toast com a mensagem do erro
+    } finally {
+      this.startingId.set(null);
+    }
+  }
+  
+  canEnter(meeting: Meeting){
+    return meeting.status === 'EM_ANDAMENTO'
+  }
+
+  async enterMeeting(meeting: Meeting) {
+    if (this.enteringId() !== null) return;
+
+    this.enteringId.set(meeting.id!);
+    try {
+      this.router.navigate(['/reunioes', meeting.id, 'sala',meeting.isPresent? 'presencial' : 'remota']);
+    } catch (err) {
+      // exibir toast com a mensagem do erro
+    } finally {
+      this.enteringId.set(null);
+    }
+  }
 
 }

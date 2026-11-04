@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, HostListener, ElementRef, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MeetingService, MeetingCreateDTO, MeetingUpdateDTO } from '../../../core/services/meeting.service';
@@ -14,6 +14,8 @@ import { Meeting } from '../../../core/models/meeting.model';
 import { ParticipantRole } from '../../../core/models/participant.model';
 import { TopicPriority } from '../../../core/models/topic.model';
 import { User } from '../../../core/models/user.model';
+import { DayOfWeek, TimeRange } from '../../../core/models/availability.model';
+import { CommonModule } from '@angular/common';
 
 interface FormParticipant {
   userId: number;
@@ -27,12 +29,13 @@ interface FormTopic {
   priority: TopicPriority;
   timer: number;
   orderIndex: number;
+  responsibleParticipantId: number | null;
 }
 
 @Component({
   selector: 'app-reuniao-form',
   standalone: true,
-  imports: [FormsModule, ToastComponent],
+  imports: [FormsModule, ToastComponent, CommonModule],
   styles: [`
     .step-line { transition: background 0.3s; }
     .btn-primary:hover { background: var(--color-primary-dark) !important; }
@@ -70,28 +73,48 @@ export class ReuniaoForm implements OnInit {
   saving  = signal(false);
   isEdit  = false;
   editId: number | null = null;
-
+  
   form: Omit<Meeting, 'id' | 'createdAt' | 'updatedAt'> = {
     title: '', description: '', location: '',
-    meetingDate: '', duration: 60,
+    estimatedMeetingDate: '', duration: 60,
+    isPresent: true
   };
-
+  
   formDate = '';
   formTime = '';
-
+  
+  availableTimes: TimeRange[] = [];
+  
   allUsers: User[]           = [];
   participantSearch          = '';
   userSuggestions            = signal<User[]>([]);
   formParticipants: FormParticipant[] = [];
   formTopics: FormTopic[]    = [];
+  
+  readonly DIAS_JS: DayOfWeek[] =
+  ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+  DIAS_SEMANA: { key: DayOfWeek; label: string }[] = [
+  { key: 'MONDAY',    label: 'seg' },
+  { key: 'TUESDAY',   label: 'ter' },
+  { key: 'WEDNESDAY', label: 'qua' },
+  { key: 'THURSDAY',  label: 'qui' },
+  { key: 'FRIDAY',    label: 'sex' },
+  { key: 'SATURDAY',  label: 'sáb' },
+  { key: 'SUNDAY',    label: 'dom' },
+];
 
+// null = ainda não calculado
+diasEmComum = signal<string[] | null>(null);
+carregandoDias = signal(false);
+participantesAlterados = false;
+  
   readonly steps = [
-    { i: 1, label: 'Informações'  },
-    { i: 2, label: 'Participantes'},
+    { i: 1, label: 'Participantes'  },
+    { i: 2, label: 'Informações'},
     { i: 3, label: 'Pauta'        },
     { i: 4, label: 'Revisão'      },
   ];
-
+  
   get reviewRows() {
     const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
     let dateLabel = '—';
@@ -102,16 +125,297 @@ export class ReuniaoForm implements OnInit {
     return [
       { key: 'Título',        value: this.form.title    || '—'                              },
       { key: 'Data / Hora',   value: dateLabel                                              },
-      { key: 'Duração',       value: this.form.duration ? `${this.form.duration} min` : '—'},
+      { key: 'Duração',       value: this.form.duration ? `${this.form.duration} min` : '—' },
       { key: 'Local',         value: this.form.location || '—'                              },
+      { key: 'Modalidade',    value: this.form.isPresent ? `Presencial` : `Remoto`          },
       { key: 'Participantes', value: `${this.formParticipants.length} convidado(s)`         },
-      { key: 'Pautas',        value: `${this.formTopics.length} item(s)`                   },
+      { key: 'Pautas',        value: `${this.formTopics.length} item(s)`                    },
     ];
   }
 
+  dropdownAberto = false;
+
+  @ViewChild('horarioWrapper') horarioWrapper!: ElementRef<HTMLElement>;
+
+  toggleDropdown() {
+    this.dropdownAberto = !this.dropdownAberto;
+  }
+
+  // Fecha ao clicar fora
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    if (
+      this.dropdownAberto &&
+      !this.horarioWrapper?.nativeElement.contains(event.target as Node)
+    ) {
+      this.dropdownAberto = false;
+    }
+  }
+
+  // Fecha com Esc
+  @HostListener('document:keydown.escape')
+  onEsc() { 
+    this.dropdownAberto = false;
+  }
+
+  private requisicaoDias = 0;
+
+  // Chame sempre que a lista de participantes mudar (adicionar/remover)
+  async aoAlterarParticipantes(): Promise<void> {
+    this.participantesAlterados = true;
+    const idRequisicao = ++this.requisicaoDias;
+
+    // Participantes mudaram: o que o usuário escolheu antes pode não valer mais
+    this.formDate = '';
+    this.formTime = '';
+    this.availableTimes = [];   // em vez de this.horariosDisponiveis = []
+
+    if (!this.formParticipants?.length) {
+      this.diasEmComum.set(null);
+      this.carregandoDias.set(false);
+      return;
+    }
+
+    this.carregandoDias.set(true);
+    const userIds = this.formParticipants.map(p => p.userId);
+
+    try {
+      const resultados = await Promise.all(
+        this.DIAS_SEMANA.map(async ({ key, label }) => {
+          try {
+            const horarios = await this.meetingService.findCommonAvailability(userIds, key);
+            return { label, temHorario: horarios.length > 0 };
+          } catch {
+            return { label, temHorario: false };
+          }
+        })
+      );
+
+      // Se os participantes mudaram durante a consulta, ignora esta resposta
+      if (idRequisicao !== this.requisicaoDias) return;
+
+      this.diasEmComum.set(resultados.filter(r => r.temHorario).map(r => r.label));
+    } catch (error) {
+      if (idRequisicao !== this.requisicaoDias) return;
+      console.error('Erro ao buscar dias em comum:', error);
+      this.diasEmComum.set(null);
+    } finally {
+      if (idRequisicao === this.requisicaoDias) {
+        this.carregandoDias.set(false);
+      }
+    }
+  }
+
+  private async carregarHorariosDaData(): Promise<void> {
+    if (!this.formDate || !this.formParticipants.length) return;
+    const dia = this.DIAS_JS[new Date(`${this.formDate}T12:00:00`).getDay()];
+    try {
+      this.availableTimes = await this.meetingService.findCommonAvailability(
+        this.formParticipants.map(p => p.userId), dia);
+    } catch {
+      this.availableTimes = [];
+    }
+  }
+
+  async carregarDiasEmComum(): Promise<void> {
+    if (!this.formParticipants?.length) {
+      this.diasEmComum.set(null);
+      return;
+    }
+
+    this.carregandoDias.set(true);
+
+    try {
+      const userIds = this.formParticipants.map(p => p.userId);
+
+      const resultados = await Promise.all(
+        this.DIAS_SEMANA.map(async ({ key, label }) => {
+          try {
+            const horarios = await this.meetingService.findCommonAvailability(userIds, key);
+            return { label, temHorario: horarios.length > 0 };
+          } catch {
+            return { label, temHorario: false };
+          }
+        })
+      );
+
+      this.diasEmComum.set(
+        resultados.filter(r => r.temHorario).map(r => r.label)
+      );
+    } catch (error) {
+      console.error('Erro ao buscar dias em comum:', error);
+      this.diasEmComum.set(null); // some o aviso em caso de erro
+    } finally {
+      this.carregandoDias.set(false);
+    }
+  }
+
+  async buscarMelhorHorario(): Promise<void> {
+    try {
+      if (!this.formDate || !this.formParticipants?.length) {
+        this.availableTimes = [];
+        this.formTime = '';
+        return;
+      }
+      // Extrai os IDs dos participantes
+      const userIds = this.formParticipants.map(p => p.userId);
+
+      // Obtém o dia da semana da data selecionada
+      const date = new Date(`${this.formDate}T12:00:00`);
+
+      const days: DayOfWeek[] = [
+        'SUNDAY',
+        'MONDAY',
+        'TUESDAY',
+        'WEDNESDAY',
+        'THURSDAY',
+        'FRIDAY',
+        'SATURDAY'
+      ];
+
+      const dayOfWeek = days[date.getDay()];
+
+      // Busca os horários em comum
+      this.availableTimes =
+        await this.meetingService.findCommonAvailability(
+          userIds,
+          dayOfWeek
+        );
+
+      if (this.availableTimes.length === 0) {
+        this.notify.error('Não há horários em comum entre os participantes no dia selecionado.');
+        this.formTime = ''
+        return;
+      }
+
+      // Busca o melhor horário entre os intervalos disponíveis
+      const bestTime =  
+        await this.meetingService.findBestAvailability(
+          this.availableTimes
+        );
+
+      if (!bestTime) {
+        this.notify.error('Não foi possível encontrar o melhor horário.');
+        return;
+      }
+
+      this.formTime = bestTime.start.substring(0, 5);
+
+      // Aqui você pode preencher os campos de horário do formulário.
+    } catch (error) {
+      console.error('Erro ao buscar disponibilidade:', error);
+      this.notify.error('Erro ao consultar a disponibilidade dos participantes.');
+    }
+  }
+
+  async aoAlterarData(data: string): Promise<void> {
+    this.formDate = data;
+
+    if (!data || !this.formParticipants?.length) {
+      return;
+    }
+
+    await this.buscarMelhorHorario();
+  }
+
+  get horariosDisponiveis(): string[] { 
+    const horarios = new Set<string>();
+    const duracao = Number(this.form.duration);
+
+    if (!duracao || duracao <= 0) {
+      return [];
+    }
+
+    for (const intervalo of this.availableTimes) {
+      const inicio = this.converterParaMinutos(intervalo.start);
+      const fim = this.converterParaMinutos(intervalo.end);
+
+      // O início deve permitir que a reunião termine dentro do intervalo.
+      const ultimoInicio = fim - duracao;
+
+      for (
+        let minutos = inicio;
+        minutos <= ultimoInicio;
+        minutos += 15
+      ) {
+        const hora = String(Math.floor(minutos / 60)).padStart(2, '0');
+        const minuto = String(minutos % 60).padStart(2, '0');
+
+        horarios.add(`${hora}:${minuto}`);
+      }
+    }
+
+    return [...horarios].sort();
+  }
+
+  validarHorario(horario: string): void {
+    if (!horario) return;
+
+    const minutos = this.converterParaMinutos(horario);
+
+    const disponivel = this.availableTimes.some(intervalo => {
+      const inicio = this.converterParaMinutos(intervalo.start);
+      const fim = this.converterParaMinutos(intervalo.end);
+
+      return minutos >= inicio && minutos < fim;
+    });
+
+    if (!disponivel) {
+      this.formTime = '';
+      this.notify.error('Selecione um horário dentro da disponibilidade dos participantes.');
+    }
+  }
+
+  private converterParaMinutos(horario: string): number {
+    const [horas, minutos] = horario.split(':').map(Number);
+    return horas * 60 + minutos;
+  }
+
+  selecionarHorario(horario: string): void {
+    this.formTime = horario;
+  }
+
+  podeAdicionarPautas(): boolean{
+    var soma = 0 ;
+    this.formTopics.forEach(t => {soma += t.timer});
+    return this.form.duration > soma;
+  }
+
+  podeAvancarPautas(): boolean{
+    var soma = 0 ;
+    this.formTopics.forEach(t => {soma += t.timer});
+    return this.form.duration >= soma;
+  }
+
+  pautaValida(): boolean {
+    return this.formTopics.length > 0 
+        && this.formTopics.every(t => !!t.title?.trim()) 
+        && this.formTopics.every(t => !!t.responsibleParticipantId);
+  }
+
   get canAdvance(): boolean {
-    if (this.step() === 1)
-      return !!(this.form.title?.trim() && this.formDate && this.formTime && this.form.duration && this.form.location?.trim());
+    if (this.step() === 1) {
+      if (!(this.formParticipants?.length)) return false;
+      if (this.carregandoDias()) return false;
+
+      // Edição sem mexer nos participantes: a reunião já tem data definida.
+      if (this.isEdit && !this.participantesAlterados) return true;
+
+      const dias = this.diasEmComum();
+      return dias !== null && dias.length > 0;
+    }
+    if (this.step() === 2) {
+      return !!(
+        this.form.title?.trim() &&
+        this.formDate &&
+        this.formTime &&
+        this.form.duration &&
+        this.form.location?.trim()
+      );
+    }
+    if (this.step() === 3) {
+      return this.pautaValida() && this.podeAvancarPautas();
+    }
     return true;
   }
 
@@ -133,11 +437,12 @@ export class ReuniaoForm implements OnInit {
       try {
         const m = await this.meetingService.buscar(this.editId);
         this.form = { title: m.title, description: m.description, location: m.location,
-                      meetingDate: m.meetingDate, duration: m.duration, status: m.status };
-        if (m.meetingDate) {
-          const d = new Date(m.meetingDate);
-          this.formDate = d.toISOString().substring(0, 10);
-          this.formTime = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+                      estimatedMeetingDate: m.estimatedMeetingDate, duration: m.duration, status: m.status, isPresent: m.isPresent };
+        if (m.estimatedMeetingDate) {
+          const d = new Date(m.estimatedMeetingDate);
+          const pad = (n: number) => String(n).padStart(2, '0');
+          this.formDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+          this.formTime = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
         }
         const participants = await this.participantService.listarPorReuniao(this.editId);
         this.formParticipants = participants.map(p => ({
@@ -146,14 +451,21 @@ export class ReuniaoForm implements OnInit {
           email:  p.user.email ?? '',
           role:   p.role,
         }));
+        this.carregarDiasEmComum();          // sem await, não trava a tela
+        this.carregarHorariosDaData();
         const minutes = await this.minutesService.buscarPorReuniao(this.editId);
-        if (minutes) {
-          this.formTopics = (minutes.topics ?? []).map(t => ({
-            title:      t.title,
-            priority:   t.priority,
-            timer:      t.timer ?? 15,
-            orderIndex: t.orderIndex,
-          }));
+        if (minutes?.id) {
+          const topics = await this.topicService.listaPorAta(minutes.id);
+          this.formTopics = [...topics]
+            .sort((a, b) => a.orderIndex - b.orderIndex)
+            .map(t => ({
+              title:      t.title,
+              priority:   t.priority,
+              timer:      t.time ?? 15,
+              orderIndex: t.orderIndex,
+              responsibleParticipantId:
+                participants.find(p => p.id === t.responsibleParticipant?.id)?.user.id ?? null,
+            }));
         }
       } catch {
         this.notify.error('Erro ao carregar reunião.');
@@ -178,14 +490,42 @@ export class ReuniaoForm implements OnInit {
     this.formParticipants.push({ userId: u.id, name: u.name, email: u.email, role: 'PARTICIPANTE' });
     this.participantSearch = '';
     this.userSuggestions.set([]);
+    this.aoAlterarParticipantes();
   }
 
   removeParticipant(p: FormParticipant): void {
     this.formParticipants = this.formParticipants.filter(x => x.userId !== p.userId);
+    this.aoAlterarParticipantes();
+  }
+
+  get tempoTotalPautas(): number {
+    return this.formTopics.reduce((soma, t) => soma + (Number(t.timer) || 0), 0);
+  }
+
+  get ultimaPautaSemNome(): boolean {
+    const ultima = this.formTopics[this.formTopics.length - 1];
+    return !!ultima && !ultima.title.trim();
+  }
+
+  get bloquearAdicionarPauta(): boolean {
+    return this.ultimaPautaSemNome;
   }
 
   addTopic(): void {
-    this.formTopics.push({ title: '', priority: 'MEDIA', timer: 15, orderIndex: this.formTopics.length + 1 });
+    if (this.bloquearAdicionarPauta) return;
+    if (this.podeAdicionarPautas()) {
+      this.notify.info('Informe o nome da pauta, caso queira adicionar outra e/ou proseguir no formulário.')
+    } else {
+      this.notify.warning('O tempo total das pautas ultrapassa a duração prevista da reunião.')
+    }
+
+    this.formTopics.push({
+      title: '',
+      priority: 'MEDIA',
+      timer: 15,
+      orderIndex: this.formTopics.length + 1,
+      responsibleParticipantId: null,
+    });
   }
 
   removeTopic(i: number): void {
@@ -200,14 +540,15 @@ export class ReuniaoForm implements OnInit {
   async submit(): Promise<void> {
     this.saving.set(true);
     try {
-      const meetingDate = `${this.formDate}T${this.formTime}:00`;
+      const estimatedMeetingDate = `${this.formDate}T${this.formTime}`;
 
       if (this.isEdit && this.editId) {
         const updateDTO: MeetingUpdateDTO = {
-          meetingDate,
+          estimatedMeetingDate,
           title:       this.form.title,
           description: this.form.description,
           location:    this.form.location,
+          isPresent:   this.form.isPresent,
           duration:    this.form.duration,
           status:      this.form.status,
         };
@@ -220,10 +561,11 @@ export class ReuniaoForm implements OnInit {
         const me = await this.userService.buscarMe();
         const createDTO: MeetingCreateDTO = {
           user:        { id: me.id },
-          meetingDate,
+          estimatedMeetingDate,
           title:       this.form.title,
           description: this.form.description,
           location:    this.form.location,
+          isPresent:   this.form.isPresent,
           duration:    this.form.duration,
         };
         const meeting = await this.meetingService.criar(createDTO);
@@ -276,18 +618,19 @@ export class ReuniaoForm implements OnInit {
 
     await Promise.all((minutes.topics ?? []).map(t => this.topicService.excluir(t.id!)));
     await Promise.all(
-      this.formTopics
-        .filter(t => t.title.trim())
-        .map(t => this.topicService.criar({
-          meetingMinutes: { id: minutes!.id! },
-          participant:    { id: myParticipant!.id! },
-          title:          t.title,
-          priority:       t.priority,
-          timer:          t.timer,
-          orderIndex:     t.orderIndex,
-          concluded:      false,
-        }))
-    );
+        this.formTopics
+            .filter(t => t.title.trim())
+            .map(t => {const responsible = participants.find(p => p.user.id === t.responsibleParticipantId);
+            return this.topicService.criar({
+                    meetingMinutes: { id: minutes!.id! },
+                    participant: {id: responsible?.id ?? myParticipant!.id!},
+                    title: t.title,
+                    priority: t.priority,
+                    timer: t.timer,
+                    orderIndex: t.orderIndex,
+                    concluded: false
+                });
+              }));
   }
 
   initials(name: string): string {

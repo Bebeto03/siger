@@ -7,17 +7,21 @@ export interface Meeting {
   title: string;
   description: string;
   location: string;
-  meetingDate: string;
+  estimatedMeetingDate: string;
+  startedAt?: string;
+  endedAt?: string;
   duration: number;
   status?: MeetingStatus;
   // MeetingResponseDTO (PATCH /cancel, GET /filter/*)
   organizerId?: number;
   organizerName?: string;
+  organizerEmail?: string;
   createdAt?: string;
   updatedAt?: string;
   // Entidade direta (GET /findAll, GET /{id}) — o backend embute os participantes
   // (Participant.meeting é WRITE_ONLY, então não há loop de serialização)
   participants?: Omit<Participant, 'meeting'>[];
   user?: { id: number; name?: string; email?: string };
-  participation?: Participant;
+  participant?: Participant;
+  isPresent?: boolean;
 }

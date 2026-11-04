@@ -8,3 +8,8 @@ export interface Participant {
   user: { id: number; name?: string; email?: string };
   meeting: { id: number };
 }
+
+export interface ParticipantRequestDTO {
+  id: number; 
+  name?: string;
+}

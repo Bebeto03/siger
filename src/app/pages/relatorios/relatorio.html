@@ -9,18 +9,29 @@
         <p class="text-sm mt-0.5" style="color: var(--color-text-muted)">Indicadores e análises do sistema</p>
     </div>
     <div class="flex items-center gap-2">
-        <button class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold"
-                style="background: var(--color-surface-light); color: var(--color-text-primary); border: 1px solid var(--color-border); cursor: pointer"
-                [disabled]="loading()"
-                (click)="recarregar()"
-                title="Recarregar indicadores">
-            ↻ Atualizar
-        </button>
-        <button class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold"
-                style="background: var(--color-surface-light); color: var(--color-text-primary); border: 1px solid var(--color-border); cursor: pointer"
-                (click)="notify.info('Exportação de PDF — em breve!')">
-            ⬇ Exportar PDF
-        </button>
+        <div class="flex items-center gap-3 py-2.5 mb-4">
+                <button class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold"
+                    style="background: var(--color-surface-light); color: var(--color-text-primary); border: 1px solid var(--color-border); cursor: pointer"
+                    [disabled]="loading()"
+                    (click)="recarregar()"
+                    title="Recarregar indicadores">
+                    ↻ Atualizar
+                </button>
+                <button class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold"
+                        style="background: var(--color-surface-light); color: var(--color-text-primary); border: 1px solid var(--color-border); cursor: pointer"
+                        (click)="exportPdf()">
+                    ⬇ Exportar PDF
+                </button>
+                <label class="flex items-center gap-2 cursor-pointer text-sm" style="color: var(--color-text-primary)">
+                    <input type="radio" name="modalidade" [value]="true" [(ngModel)]="comGraficos" class="w-4 h-4" />
+                    Com gráficos
+                </label>
+                
+                <label class="flex items-center gap-2 cursor-pointer text-sm" style="color: var(--color-text-primary)">
+                    <input type="radio" name="modalidade" [value]="false" [(ngModel)]="comGraficos" class="w-4 h-4" />
+                    Sem gráficos
+                </label>
+        </div>
     </div>
     </div>
 

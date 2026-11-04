@@ -10,6 +10,8 @@ import { ToastComponent } from '../../../shared/components/toast/toast';
 import { Task, TaskStatus } from '../../../core/models/task.model';
 import { User } from '../../../core/models/user.model';
 import { Meeting } from '../../../core/models/meeting.model';
+import { Participant } from '../../../core/models/participant.model';
+import { ParticipantService } from '../../../core/services/participant.service';
 
 const COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
   { status: 'NAO_INICIADO', label: 'Pendente',     color: 'var(--color-text-muted)' },
@@ -44,17 +46,22 @@ export class TarefaList implements OnInit {
   private taskService    = inject(TaskService);
   private userService    = inject(UserService);
   private meetingService = inject(MeetingService);
+  private participantService = inject(ParticipantService);
   private auth           = inject(AuthService);
   private notify         = inject(NotificationService);
 
   tasks        = signal<Task[]>([]);
   users        = signal<User[]>([]);
   meetings     = signal<Meeting[]>([]);
+  participants = signal<Participant[]>([]);
   loading      = signal(false);
   saving       = signal(false);
   showModal    = signal(false);
+  editTarget   = signal(false);
   deleteTarget = signal<Task | null>(null);
   filterMeetingId: number | null = null;
+  hasAccess = this.auth.temPermissao('ROLE_ADMIN') || this.auth.temPermissao('ROLE_ORGANIZADOR');
+  editingTask: Task | null = null;
 
   readonly columns = COLUMNS;
 
@@ -75,11 +82,21 @@ export class TarefaList implements OnInit {
       const usersPromise = this.auth.temPermissao('ROLE_ADMIN')
         ? this.userService.listar().catch(() => [] as User[])
         : Promise.resolve([] as User[]);
-      const [tasks, users, meetings] = await Promise.all([
-        this.taskService.listar(),
+      const [users, meetings] = await Promise.all([
         usersPromise,
-        this.meetingService.listar().catch(() => []),
+        this.meetingService.listarMinhasReunioes().catch(() => []),
       ]);
+      const tasks = (
+        await Promise.all(
+          meetings
+            .filter((meeting) => meeting.id !== undefined)
+            .map((meeting) =>
+              this.taskService
+                .listarPorReuniao(meeting.id!)
+                .catch(() => [])
+            )
+        )
+      ).flat();
       this.tasks.set(tasks);
       this.users.set(users);
       this.meetings.set(meetings);
@@ -90,34 +107,65 @@ export class TarefaList implements OnInit {
     }
   }
 
-  openModal(): void {
-    this.form = { title: '', meetingId: this.filterMeetingId, assigneeId: null, dueDate: '', status: 'NAO_INICIADO' };
+  openModal(t?:Task): void {
+    this.editingTask = t ?? null;
+
+    this.form = t ? { title: t.title, meetingId: t.meeting.id, assigneeId: t.assignee?.id! ?? null, dueDate: t.dueDate ? t.dueDate.substring(0, 10) : '', status: t.status } 
+                  :{ title: '', meetingId: this.filterMeetingId, assigneeId: null, dueDate: '', status: 'NAO_INICIADO' };
     this.showModal.set(true);
+    if (t) {
+      void this.onMeetingChange(t.meeting.id, t.assignee?.id);
+      this.editTarget.set(true);
+    }else if (this.filterMeetingId) {
+      void this.onMeetingChange(this.filterMeetingId)
+    }
   }
 
-  closeModal(): void { this.showModal.set(false); }
+  closeModal(): void { this.showModal.set(false);  this.editTarget.set(false);}
 
   async submitTask(): Promise<void> {
-    if (!this.form.title?.trim() || !this.form.meetingId) return;
-    this.saving.set(true);
-    try {
-      const meeting = this.meetings().find(m => m.id === this.form.meetingId);
-      const assignee = this.form.assigneeId
-        ? this.users().find(u => u.id === this.form.assigneeId)
-        : undefined;
+    if (!this.form.title?.trim() || this.form.meetingId == null) {
+      return;
+    }
 
-      const nova = await this.taskService.criar({
-        title:      this.form.title.trim(),
-        status:     this.form.status ?? 'NAO_INICIADO',
-        meetingId:  this.form.meetingId,
-        assigneeId: assignee?.id ?? undefined,
-        dueDate:    this.form.dueDate || undefined,
-      });
-      this.tasks.update(list => [...list, nova]);
-      this.notify.success('Tarefa criada!');
+    this.saving.set(true);
+
+    try {
+      const data = {
+        title: this.form.title.trim(),
+        status: this.form.status ?? 'NAO_INICIADO',
+        meetingId: this.form.meetingId,
+        assigneeId: this.form.assigneeId ?? undefined,
+        description: '',
+        dueDate: this.form.dueDate
+                ? `${this.form.dueDate}T00:00:00`
+                : undefined,
+      };
+      if (this.editingTask) {
+        const atualizada = await this.taskService.editarEntity(
+          this.editingTask.id!,
+          data
+        );
+
+        this.tasks.update(list =>
+          list.map(task =>
+            task.id === atualizada.id ? atualizada : task
+          )
+        );
+
+        this.notify.success('Tarefa atualizada!');
+      } else {
+        const nova = await this.taskService.criar(data);
+
+        this.tasks.update(list => [...list, nova]);
+
+        this.notify.success('Tarefa criada!');
+      }
+
       this.closeModal();
-    } catch {
-      this.notify.error('Erro ao criar tarefa.');
+    } catch (error) {
+      console.error('Erro ao salvar tarefa:', error);
+      this.notify.error('Erro ao salvar tarefa.');
     } finally {
       this.saving.set(false);
     }
@@ -125,7 +173,7 @@ export class TarefaList implements OnInit {
 
   async moveTask(t: Task, status: TaskStatus): Promise<void> {
     try {
-      await this.taskService.editar(t.id!, { status });
+      await this.taskService.editarStatus(t.id!, status );
       this.tasks.update(list => list.map(x => x.id === t.id ? { ...x, status } : x));
     } catch {
       this.notify.error('Erro ao mover tarefa.');
@@ -157,5 +205,29 @@ export class TarefaList implements OnInit {
     const parts = name.trim().split(' ').filter(Boolean);
     if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  async onMeetingChange(meetingId: number | null ,assigneeId?: number | null): Promise<void> {
+    this.participants.set([]);
+    this.form.assigneeId = null;
+
+    if (meetingId == null) return;
+
+    try {
+      const result = await this.participantService.listarPorReuniao(meetingId);
+
+      this.participants.set(result);
+
+      const participantExists = result.some(
+        p => p.user.id === assigneeId
+      );
+
+      this.form.assigneeId = participantExists
+        ? assigneeId!
+        : null;
+
+    } catch (error) {
+      console.error('Erro ao buscar participantes:', error);
+    }
   }
 }

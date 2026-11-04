@@ -13,3 +13,8 @@ export interface AvailabilityBlock {
   startTime: string; // "HH:mm" ou "HH:mm:ss"
   endTime: string;
 }
+
+export interface TimeRange {
+  start: string;
+  end: string;
+}
