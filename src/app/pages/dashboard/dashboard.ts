@@ -48,7 +48,6 @@ export class Dashboard implements OnInit {
   readonly router = inject(Router);
   private store   = inject(Store);
   private auth    = inject(AuthService);
-  private participantService = inject(ParticipantService);
 
   // ─── Estado vindo do store (NgRx) ─────────────────────────────────────────
   loading = this.store.selectSignal(selectLoading);

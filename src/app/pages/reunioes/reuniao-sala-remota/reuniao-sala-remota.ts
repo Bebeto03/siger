@@ -314,7 +314,7 @@ export class ReuniaoSalaRemota implements OnInit, OnDestroy {
             return;
         }
 
-        if (!confirm('Encerrar a reunião para todos os participantes?')) {
+        if (!confirm('Deseja encerrar a reunião?')) {
             return;
         }
 
@@ -357,37 +357,25 @@ export class ReuniaoSalaRemota implements OnInit, OnDestroy {
     private async updateParticipation(participant: Participant, participation: ParticipantParticipation): Promise<void> {
 
         if (!participant.id) {
-            console.error('Participante sem ID.');
             return;
         }
 
         try {
-            // Atualiza no backend.
-            const updatedParticipant = await this.participantService.editar(
-                participant.id,
-                {
-                    ...participant,
-                    participation
-                }
-            );
+            await this.participantService.editar(participant.id, {
+                user:    { id: participant.user.id },
+                meeting: { id: this.meetingId },
+                role:    participant.role,
+                participation,
+            });
 
-            // Atualiza o Signal de participantes.
+            // Mantém o objeto local, só troca o campo alterado.
             const updatedParticipants = this.participants().map(item =>
-                item.id === participant.id
-                    ? updatedParticipant
-                    : item
+                item.id === participant.id ? { ...item, participation } : item
             );
 
             this.participants.set(updatedParticipants);
-
-            // Atualiza também os participantes da reunião.
             this.meeting.update(meeting =>
-                meeting
-                    ? {
-                        ...meeting,
-                        participants: updatedParticipants
-                    }
-                    : null
+                meeting ? { ...meeting, participants: updatedParticipants } : null
             );
 
         } catch (error) {

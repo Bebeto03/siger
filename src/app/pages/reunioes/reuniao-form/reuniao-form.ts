@@ -91,6 +91,8 @@ export class ReuniaoForm implements OnInit {
   formParticipants: FormParticipant[] = [];
   formTopics: FormTopic[]    = [];
   
+  readonly DIAS_JS: DayOfWeek[] =
+  ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
   DIAS_SEMANA: { key: DayOfWeek; label: string }[] = [
   { key: 'MONDAY',    label: 'seg' },
   { key: 'TUESDAY',   label: 'ter' },
@@ -104,6 +106,7 @@ export class ReuniaoForm implements OnInit {
 // null = ainda não calculado
 diasEmComum = signal<string[] | null>(null);
 carregandoDias = signal(false);
+participantesAlterados = false;
   
   readonly steps = [
     { i: 1, label: 'Participantes'  },
@@ -159,6 +162,7 @@ carregandoDias = signal(false);
 
   // Chame sempre que a lista de participantes mudar (adicionar/remover)
   async aoAlterarParticipantes(): Promise<void> {
+    this.participantesAlterados = true;
     const idRequisicao = ++this.requisicaoDias;
 
     // Participantes mudaram: o que o usuário escolheu antes pode não valer mais
@@ -199,6 +203,17 @@ carregandoDias = signal(false);
       if (idRequisicao === this.requisicaoDias) {
         this.carregandoDias.set(false);
       }
+    }
+  }
+
+  private async carregarHorariosDaData(): Promise<void> {
+    if (!this.formDate || !this.formParticipants.length) return;
+    const dia = this.DIAS_JS[new Date(`${this.formDate}T12:00:00`).getDay()];
+    try {
+      this.availableTimes = await this.meetingService.findCommonAvailability(
+        this.formParticipants.map(p => p.userId), dia);
+    } catch {
+      this.availableTimes = [];
     }
   }
 
@@ -380,12 +395,14 @@ carregandoDias = signal(false);
 
   get canAdvance(): boolean {
     if (this.step() === 1) {
+      if (!(this.formParticipants?.length)) return false;
+      if (this.carregandoDias()) return false;
+
+      // Edição sem mexer nos participantes: a reunião já tem data definida.
+      if (this.isEdit && !this.participantesAlterados) return true;
+
       const dias = this.diasEmComum();
-      return (
-        (this.formParticipants?.length ?? 0) > 0 &&
-        !this.carregandoDias() &&
-        dias !== null &&
-        dias.length > 0);
+      return dias !== null && dias.length > 0;
     }
     if (this.step() === 2) {
       return !!(
@@ -423,8 +440,9 @@ carregandoDias = signal(false);
                       estimatedMeetingDate: m.estimatedMeetingDate, duration: m.duration, status: m.status, isPresent: m.isPresent };
         if (m.estimatedMeetingDate) {
           const d = new Date(m.estimatedMeetingDate);
-          this.formDate = d.toISOString().substring(0, 10);
-          this.formTime = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+          const pad = (n: number) => String(n).padStart(2, '0');
+          this.formDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+          this.formTime = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
         }
         const participants = await this.participantService.listarPorReuniao(this.editId);
         this.formParticipants = participants.map(p => ({
@@ -433,15 +451,21 @@ carregandoDias = signal(false);
           email:  p.user.email ?? '',
           role:   p.role,
         }));
+        this.carregarDiasEmComum();          // sem await, não trava a tela
+        this.carregarHorariosDaData();
         const minutes = await this.minutesService.buscarPorReuniao(this.editId);
-        if (minutes) {
-          this.formTopics = (minutes.topics ?? []).map(t => ({
-            title:      t.title,
-            priority:   t.priority,
-            timer:      t.time ?? 15,
-            responsibleParticipantId: t.responsibleParticipant?.id ?? null,
-            orderIndex: t.orderIndex,
-          }));
+        if (minutes?.id) {
+          const topics = await this.topicService.listaPorAta(minutes.id);
+          this.formTopics = [...topics]
+            .sort((a, b) => a.orderIndex - b.orderIndex)
+            .map(t => ({
+              title:      t.title,
+              priority:   t.priority,
+              timer:      t.time ?? 15,
+              orderIndex: t.orderIndex,
+              responsibleParticipantId:
+                participants.find(p => p.id === t.responsibleParticipant?.id)?.user.id ?? null,
+            }));
         }
       } catch {
         this.notify.error('Erro ao carregar reunião.');
