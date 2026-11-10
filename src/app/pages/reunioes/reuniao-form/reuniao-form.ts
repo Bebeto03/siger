@@ -419,60 +419,82 @@ participantesAlterados = false;
     return true;
   }
 
+  
   async ngOnInit(): Promise<void> {
-    if (this.auth.temPermissao('ROLE_ADMIN')) {
+    try {
+      // 1. Carrega os usuários disponíveis no sistema.
       this.allUsers = await this.userService.listar().catch(() => []);
-    } else if (this.auth.temPermissao('ROLE_ORGANIZADOR')) {
-      const participants = await this.participantService.listar().catch(() => []);
-      const seen = new Set<number>();
-      this.allUsers = participants
-        .filter(p => p.user?.id && !seen.has(p.user.id) && seen.add(p.user.id))
-        .map(p => ({ id: p.user.id, name: p.user.name ?? '', email: p.user.email ?? '' } as User));
-    }
 
-    const id = this.route.snapshot.paramMap.get('id');
-    if (id) {
+      // 2. Verifica se está criando ou editando uma reunião.
+      const id = this.route.snapshot.paramMap.get('id');
+
+      if (!id) return;
+
       this.isEdit = true;
       this.editId = Number(id);
-      try {
-        const m = await this.meetingService.buscar(this.editId);
-        this.form = { title: m.title, description: m.description, location: m.location,
-                      estimatedMeetingDate: m.estimatedMeetingDate, duration: m.duration, status: m.status, isPresent: m.isPresent };
-        if (m.estimatedMeetingDate) {
-          const d = new Date(m.estimatedMeetingDate);
-          const pad = (n: number) => String(n).padStart(2, '0');
-          this.formDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-          this.formTime = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        }
-        const participants = await this.participantService.listarPorReuniao(this.editId);
-        this.formParticipants = participants.map(p => ({
-          userId: p.user.id,
-          name:   p.user.name  ?? '',
-          email:  p.user.email ?? '',
-          role:   p.role,
-        }));
-        this.carregarDiasEmComum();          // sem await, não trava a tela
-        this.carregarHorariosDaData();
-        const minutes = await this.minutesService.buscarPorReuniao(this.editId);
-        if (minutes?.id) {
-          const topics = await this.topicService.listaPorAta(minutes.id);
-          this.formTopics = [...topics]
-            .sort((a, b) => a.orderIndex - b.orderIndex)
-            .map(t => ({
-              title:      t.title,
-              priority:   t.priority,
-              timer:      t.time ?? 15,
-              orderIndex: t.orderIndex,
-              responsibleParticipantId:
-                participants.find(p => p.id === t.responsibleParticipant?.id)?.user.id ?? null,
-            }));
-        }
-      } catch {
-        this.notify.error('Erro ao carregar reunião.');
-        this.router.navigate(['/reunioes']);
+
+      // 3. Busca os dados da reunião.
+      const m = await this.meetingService.buscar(this.editId);
+
+      this.form = {
+        title: m.title,
+        description: m.description,
+        location: m.location,
+        estimatedMeetingDate: m.estimatedMeetingDate,
+        duration: m.duration,
+        status: m.status,
+        isPresent: m.isPresent
+      };
+
+      if (m.estimatedMeetingDate) {
+        const d = new Date(m.estimatedMeetingDate);
+        const pad = (n: number) => String(n).padStart(2, '0');
+
+        this.formDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        this.formTime = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
       }
+
+      // 4. Busca SOMENTE os participantes vinculados a esta reunião.
+      const participants = await this.participantService.listarPorReuniao(this.editId);
+
+      this.formParticipants = participants.map(p => ({
+        userId: p.user.id,
+        name: p.user.name ?? '',
+        email: p.user.email ?? '',
+        role: p.role
+      }));
+
+      // 5. Calcula disponibilidade dos participantes existentes.
+      this.carregarDiasEmComum();
+      this.carregarHorariosDaData();
+
+      // 6. Carrega as pautas existentes.
+      const minutes = await this.minutesService.buscarPorReuniao(this.editId);
+
+      if (minutes?.id) {
+        const topics = await this.topicService.listaPorAta(minutes.id);
+
+        this.formTopics = [...topics]
+          .sort((a, b) => a.orderIndex - b.orderIndex)
+          .map(t => ({
+            title: t.title,
+            priority: t.priority,
+            timer: t.time ?? 15,
+            orderIndex: t.orderIndex,
+            responsibleParticipantId:
+              participants.find(
+                p => p.id === t.responsibleParticipant?.id
+              )?.user.id ?? null
+          }));
+      }
+
+    } catch (error) {
+      console.error('Erro ao carregar formulário:', error);
+      this.notify.error('Erro ao carregar reunião.');
+      this.router.navigate(['/reunioes']);
     }
   }
+
 
   filterUsers(): void {
     const q = this.participantSearch.toLowerCase().trim();
